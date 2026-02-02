@@ -1,0 +1,46 @@
+{
+  "roots": [
+    "src/App.jsx",
+    "src/main.jsx"
+  ],
+  "reachable": [
+    "src/App.jsx",
+    "src/main.jsx",
+    "src/api.js",
+    "src/components/AlertsBanner.jsx",
+    "src/components/AutoPlayControls.jsx",
+    "src/components/AutoPlayer.jsx",
+    "src/components/Cards.jsx",
+    "src/components/Filters.jsx",
+    "src/components/InstanceDetail.jsx",
+    "src/components/HistoryChart.jsx",
+    "src/components/Logo.jsx",
+    "src/lib/logoUtil.js",
+    "src/components/MonitorCard.jsx",
+    "src/components/Sparkline.jsx",
+    "src/historyEngine.js",
+    "src/historyDB.js",
+    "src/historyMem.js",
+    "src/components/MonitorsTable.jsx",
+    "src/components/SLAAlerts.jsx",
+    "src/lib/sla.js",
+    "src/components/ServiceGrid.jsx",
+    "src/utils/notify.js"
+  ],
+  "unusedCode": [
+    "src/App.css",
+    "src/chartAdapter.js",
+    "src/components/ChartFallback.jsx",
+    "src/components/DebugChip.jsx",
+    "src/components/OverlayChart.jsx",
+    "src/components/ServiceCard.jsx",
+    "src/components/charts/ResponseTimeMini.jsx",
+    "src/components/charts/UptimeBarMini.jsx",
+    "src/index.css",
+    "src/styles.css"
+  ],
+  "unusedAssets": [
+    "src/assets/react.svg",
+    "public/logos/default.svg"
+  ]
+}
