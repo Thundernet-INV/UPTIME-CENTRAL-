@@ -1,0 +1,92 @@
+import React, { useEffect, useMemo, useRef } from "react";
+
+/**
+ * AutoPlayer v6 (instrumentado)
+ * - Un solo tiempo: sec (s).
+ * - HOME: primer salto ~300ms.
+ * - SEDE: tras sec s -> siguiente sede (loop), sin pasar por HOME.
+ * - Logs a consola para ver exactamente qué se programa.
+ */
+export default function AutoPlayer({
+  enabled=false,
+  sec=10,
+  order="downFirst",
+  onlyIncidents=false,
+  loop=true,
+  filteredAll=[],
+  route,
+  openInstance
+}) {
+  const idxRef = useRef(0);
+  const timerRef = useRef(null);
+
+  const instanceStats = useMemo(() => {
+    const map = new Map();
+    for (const m of filteredAll) {
+      const it = map.get(m.instance) || { up:0, down:0, total:0 };
+      if (m.latest?.status === 1) it.up++; else if (m.latest?.status === 0) it.down++;
+      it.total++; map.set(m.instance, it);
+    }
+    return map;
+  }, [filteredAll]);
+
+  const playlist = useMemo(() => {
+    let arr = Array.from(instanceStats.keys());
+    if (onlyIncidents) arr = arr.filter(n => (instanceStats.get(n)?.down || 0) > 0);
+    if (order === "downFirst") {
+      arr.sort((a,b)=> (instanceStats.get(b)?.down||0) - (instanceStats.get(a)?.down||0) || a.localeCompare(b));
+    } else {
+      arr.sort((a,b)=> a.localeCompare(b));
+    }
+    return arr;
+  }, [instanceStats, onlyIncidents, order]);
+
+  useEffect(() => { if (idxRef.current >= playlist.length) idxRef.current = 0; }, [playlist.length]);
+
+  // Debug global (útil para leer desde consola)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.__apDebug = {
+        enabled, route: route?.name, instance: route?.instance || null,
+        count: playlist.length,
+        next: playlist.length ? playlist[idxRef.current % playlist.length] : null,
+        sec, onlyIncidents, order, loop
+      };
+      // console.log("[AP] state", window.__apDebug);
+    }
+  }, [enabled, route?.name, route?.instance, playlist.length, sec, onlyIncidents, order, loop]);
+
+  useEffect(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (!enabled || !playlist.length) return;
+
+    const SEC = Math.max(1, Number(sec) || 10);
+    const goByHash = (name) => { window.location.hash = "/sede/" + encodeURIComponent(name); };
+
+    const gotoNextFrom = (currentName) => {
+      if (!playlist.length) return;
+      let i = currentName ? playlist.indexOf(currentName) : -1;
+      let nextIdx = (i >= 0 ? i + 1 : idxRef.current);
+      if (nextIdx >= playlist.length) {
+        if (!loop) return;
+        nextIdx = 0;
+      }
+      idxRef.current = nextIdx;
+      const nextName = playlist[nextIdx];
+      console.log("[AP] gotoNext:", { from: currentName || "(home)", to: nextName, sec: SEC });
+      if (typeof openInstance === "function") openInstance(nextName); else goByHash(nextName);
+    };
+
+    if (route?.name === "home") {
+      console.log("[AP] schedule@home:", 300, "ms", { sec: SEC, items: playlist.length });
+      timerRef.current = setTimeout(() => gotoNextFrom(null), 300);
+    } else if (route?.name === "sede") {
+      console.log("[AP] schedule@sede:", SEC * 1000, "ms", { sec: SEC, current: route?.instance });
+      timerRef.current = setTimeout(() => gotoNextFrom(route.instance), SEC * 1000);
+    }
+
+    return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; } };
+  }, [enabled, sec, route?.name, route?.instance, playlist.length, loop, openInstance]);
+
+  return null;
+}

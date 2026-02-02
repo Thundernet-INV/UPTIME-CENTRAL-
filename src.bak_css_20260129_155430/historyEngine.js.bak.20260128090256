@@ -1,0 +1,13 @@
+// (igual al motor histórico consolidado que te entregué)
+const KEY="kuma_history_snapshots_v1",MAX=500,SPARK_POINTS=120;
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]} }
+function save(a){try{localStorage.setItem(KEY,JSON.stringify(a))}catch{}}
+function now(){return Date.now()}
+function avgLatencyForInstance(ms,i){const a=ms.filter(m=>m.instance===i).map(m=>m.latest?.responseTime).filter(v=>typeof v==="number"&&isFinite(v));if(!a.length)return null;return Math.round(a.reduce((x,y)=>x+y,0)/a.length)}
+function downCountForInstance(ms,i){return ms.filter(m=>m.instance===i&&m.latest?.status===0).length}
+function findMonitor(ms,i,n){const s=(n||"").toLowerCase().trim();return ms.find(m=>m.instance===i&&(m.info?.monitor_name||"").toLowerCase().trim()===s)}
+const History={addSnapshot(ms){const s=load();s.push({t:now(),monitors:ms});while(s.length>MAX)s.shift();save(s)},
+getAvgSeriesByInstance(i,p=SPARK_POINTS){const s=load(),xs=[],ys=[];for(const k of s){xs.push(k.t);ys.push(avgLatencyForInstance(k.monitors,i))}const st=Math.max(0,xs.length-p);return{t:xs.slice(st),v:ys.slice(st)}},
+getDownsSeriesByInstance(i,p=SPARK_POINTS){const s=load(),xs=[],ys=[];for(const k of s){xs.push(k.t);ys.push(downCountForInstance(k.monitors,i))}const st=Math.max(0,xs.length-p);return{t:xs.slice(st),v:ys.slice(st)}},
+getSeriesForMonitor(i,n,p=SPARK_POINTS){const s=load(),xs=[],ys=[];for(const k of s){const m=findMonitor(k.monitors,i,n);xs.push(k.t);ys.push(typeof m?.latest?.responseTime==="number"?m.latest.responseTime:null)}const st=Math.max(0,xs.length-p);return{t:xs.slice(st),v:ys.slice(st)}},
+getAllForInstance(i,p=MAX){const lat=this.getAvgSeriesByInstance(i,p),dwn=this.getDownsSeriesByInstance(i,p);return{lat,dwn}}};export default History;

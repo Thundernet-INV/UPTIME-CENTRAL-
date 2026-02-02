@@ -1,0 +1,47 @@
+import DB from './historyDB';
+
+/**
+ * Capa de historial con IndexedDB + compat para UI legada.
+ * - addSnapshot(monitors): persiste y poda 7 días
+ * - getSeriesForMonitor(instance,name,sinceMs): serie cruda
+ * - getAvgSeriesForMonitor(instance,name,sinceMs,bucketMs): promedios por bucket
+ * - getAllForInstance(instance,sinceMs): objeto {name: muestras[]}
+ * - getAvgSeriesByInstance(instance,sinceMs,bucketMs): array {ts, avgMs}
+ */
+const History = {
+  addSnapshot(monitors) {
+    DB.addSnapshots(monitors).catch(()=>{});
+    DB.pruneOlderThanDays(7).catch(()=>{});
+  },
+
+  async getSeriesForMonitor(instance, name, sinceMs = 24*3600*1000) {
+    const key = `${instance}::${name || ''}`;
+    return DB.getSeriesFor(key, sinceMs);
+  },
+
+  async getAvgSeriesForMonitor(instance, name, sinceMs = 24*3600*1000, bucketMs = 60*1000) {
+    const samples = await History.getSeriesForMonitor(instance, name, sinceMs);
+    if (!samples || !samples.length) return [];
+    const sum = new Map(), count = new Map();
+    for (const s of samples) {
+      if (typeof s.responseTime !== 'number') continue;
+      const b = Math.floor(s.ts / bucketMs) * bucketMs;
+      sum.set(b, (sum.get(b) || 0) + s.responseTime);
+      count.set(b, (count.get(b) || 0) + 1);
+    }
+    const out = [];
+    for (const [b, s] of sum) out.push({ ts: b, avgMs: s / (count.get(b) || 1) });
+    out.sort((a,b)=> a.ts - b.ts);
+    return out;
+  },
+
+  getAllForInstance(instance, sinceMs = 24*3600*1000) {
+    return DB.getAllForInstance(instance, sinceMs);
+  },
+
+  getAvgSeriesByInstance(instance, sinceMs = 24*3600*1000, bucketMs = 60*1000) {
+    return DB.getAvgSeriesByInstance(instance, sinceMs, bucketMs);
+  },
+};
+
+export default History;

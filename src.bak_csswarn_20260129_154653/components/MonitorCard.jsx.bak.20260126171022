@@ -1,0 +1,46 @@
+import React from "react";
+import Logo from "./Logo.jsx";
+import Sparkline from "./Sparkline.jsx";
+import { hostFromUrl } from "../lib/logoUtil.js";
+
+export default function MonitorCard({ monitor, onHide, onUnhide, series, onClick }) {
+  const stUp = monitor?.latest?.status === 1;
+  const statusText = stUp ? "UP" : "DOWN";
+  const color = stUp ? "#16a34a" : "#dc2626";
+  const host = hostFromUrl(monitor?.info?.monitor_url || "");
+  const latency = (typeof monitor?.latest?.responseTime === "number") ? `${monitor.latest.responseTime} ms` : "—";
+  const href = monitor?.info?.monitor_url || "";
+
+  function stop(e){ e.stopPropagation(); }
+
+  return (
+    <div className="svc-card" onClick={onClick}>
+      <div className="svc-head">
+        <Logo monitor={monitor} href={href} size={22} />
+        <div className="svc-titles">
+          <div className="svc-name">{monitor?.info?.monitor_name}</div>
+          <div className="svc-sub">{host || (monitor?.info?.monitor_url || "")}</div>
+        </div>
+        <span className="svc-badge" style={{ background: color }}>{statusText}</span>
+      </div>
+
+      <div className="svc-body">
+        <div className="svc-lat">
+          <span className="svc-lab">Latencia:</span> <strong>{latency}</strong>
+        </div>
+        <div className="svc-spark">
+          <Sparkline points={series} color={color} height={42} />
+        </div>
+      </div>
+
+      <div className="svc-actions" onClick={stop}>
+        <button className="k-btn k-btn--danger" onClick={()=>onHide?.(monitor.instance, monitor.info?.monitor_name)}>
+          Ocultar
+        </button>
+        <button className="k-btn k-btn--ghost" onClick={()=>onUnhide?.(monitor.instance, monitor.info?.monitor_name)}>
+          Mostrar
+        </button>
+      </div>
+    </div>
+  );
+}

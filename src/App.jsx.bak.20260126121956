@@ -1,0 +1,257 @@
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Cards from "./components/Cards.jsx";
+import Filters from "./components/Filters.jsx";
+import ServiceGrid from "./components/ServiceGrid.jsx";
+import MonitorsTable from "./components/MonitorsTable.jsx";
+import InstanceDetail from "./components/InstanceDetail.jsx";
+import SLAAlerts from "./components/SLAAlerts.jsx";
+import { fetchAll, getBlocklist, saveBlocklist, fetchSummary } from "./api.js";
+
+const SLA_CONFIG = {
+    uptimeTarget: 99.9,
+    maxLatencyMs: 800,
+};
+
+function getRoute() {
+    const parts = (window.location.hash || "").slice(1).split("/").filter(Boolean);
+    if (parts[0] === "sede" && parts[1]) return { name: "sede", instance: decodeURIComponent(parts[1]) };
+    return { name: "home" };
+}
+
+function computeSummary(ms = []) {
+    const up = ms.filter((m) => m.latest?.status === 1).length;
+    const down = ms.filter((m) => m.latest?.status === 0).length;
+    const rts = ms.map((m) => m.latest?.responseTime).filter((v) => v != null);
+    const avgResponseTimeMs = rts.length ? Math.round(rts.reduce((a, b) => a + b, 0) / rts.length) : null;
+    return { up, down, total: ms.length, avgResponseTimeMs };
+}
+
+const keyFor = (instance, name = "") => JSON.stringify({ i: instance, n: name });
+const fromKey = (k) => { try { return JSON.parse(k) } catch { return { i: "", n: "" } } };
+
+export default function App() {
+
+    const [summary, setSummary] = useState({ up: 0, down: 0, total: 0, avgResponseTimeMs: null });
+    const [monitors, setMonitors] = useState([]);
+    const [instances, setInstances] = useState([]);
+    const [filters, setFilters] = useState({ instance: "", type: "", q: "", onlyDown: false, status: "all" });
+    const [hidden, setHidden] = useState(new Set());
+    const [view, setView] = useState("grid");
+    const [route, setRoute] = useState(getRoute());
+
+    // ---------------- ROUTING ----------------
+    useEffect(() => {
+        const onHash = () => setRoute(getRoute());
+        window.addEventListener("hashchange", onHash);
+        return () => window.removeEventListener("hashchange", onHash);
+    }, []);
+
+    // ---------------- INIT LOAD ----------------
+    const didInit = useRef(false);
+
+    useEffect(() => {
+        if (didInit.current) return;
+        didInit.current = true;
+
+        (async () => {
+            try {
+                const { instances, monitors } = await fetchAll();
+
+                setInstances(instances);
+                setMonitors(monitors);
+
+                const bl = await getBlocklist();
+                const set = new Set((bl?.monitors ?? []).map((k) => keyFor(k.instance, k.name)));
+                setHidden(set);
+
+                const s = await fetchSummary();
+                setSummary(s ?? computeSummary(monitors));
+            } catch (e) {
+                console.error("[init error]", e);
+            }
+        })();
+    }, []);
+
+    // ---------------- POLLING CADA 5s ----------------
+    useEffect(() => {
+        let cancel = false;
+
+        async function poll() {
+            if (cancel) return;
+            try {
+                const { instances, monitors } = await fetchAll();
+                setInstances(instances);
+                setMonitors(monitors);
+                setSummary(await fetchSummary());
+            } catch {}
+            setTimeout(poll, 5000);
+        }
+
+        poll();
+        return () => { cancel = true; };
+    }, []);
+
+    // ---------------- FILTERING ----------------
+// --- baseMonitors: aplica instance/type/q (NO estado) ---
+const baseMonitors = useMemo(() => {
+  return (monitors ?? []).filter(m => {
+    if (filters.instance && m.instance !== filters.instance) return false;
+    if (filters.type && m.info?.monitor_type !== filters.type) return false;
+    if (filters.q) {
+      const hay = `${m.info?.monitor_name ?? ""} ${m.info?.monitor_url ?? ""}`.toLowerCase();
+      if (!hay.includes(filters.q.toLowerCase())) return false;
+    }
+    return true;
+  });
+}, [monitors, filters.instance, filters.type, filters.q]);
+
+// --- headerCounts: totales de MONITORES para el header ---
+const headerCounts = useMemo(() => {
+  const up    = baseMonitors.filter(m => m.latest?.status === 1).length;
+  const down  = baseMonitors.filter(m => m.latest?.status === 0).length;
+  const total = baseMonitors.length;
+  const rts = baseMonitors.map(m => m.latest?.responseTime).filter(v => v != null);
+  const avg = rts.length ? Math.round(rts.reduce((a,b)=>a+b,0)/rts.length) : null;
+  return { up, down, total, avgMs: avg };
+}, [baseMonitors]);
+
+// --- Estado efectivo y setter desde header ---
+const effectiveStatus =
+  filters.status !== "all" ? filters.status : (filters.onlyDown ? "down" : "all");
+function setStatus(status) {
+  setFilters(prev => ({ ...prev, status, onlyDown: status === "down" }));
+}
+
+    const filteredAll = useMemo(() =>
+        (monitors ?? []).filter((m) => {
+            if (filters.instance && m.instance !== filters.instance) return false;
+            if (filters.type && m.info?.monitor_type !== filters.type) return false;
+            if (effectiveStatus === "up" if (filters.onlyDown && m.latest?.status !== 0) return false;if (filters.onlyDown && m.latest?.status !== 0) return false; m.latest?.status !== 1) return false;
+    if (effectiveStatus === "down" if (filters.onlyDown && m.latest?.status !== 0) return false;if (filters.onlyDown && m.latest?.status !== 0) return false; m.latest?.status !== 0) return false;
+            if (filters.q) {
+                const hay = `${m.info?.monitor_name ?? ""} ${m.info?.monitor_url ?? ""}`.toLowerCase();
+                if (!hay.includes(filters.q.toLowerCase())) return false;
+            }
+            return true;
+        }),
+        [monitors, filters]
+    );
+
+    const visible = filteredAll.filter((m) => !hidden.has(keyFor(m.instance, m.info?.monitor_name)));
+
+    // ---------------- HIDDEN MONITORS ----------------
+    async function persistHidden(next) {
+        const arr = [...next].map((k) => {
+            const { i, n } = fromKey(k);
+            return { instance: i, name: n };
+        });
+        await saveBlocklist({ monitors: arr });
+        setHidden(next);
+    }
+
+    function onHide(instance, name) {
+        const next = new Set(hidden);
+        next.add(keyFor(instance, name));
+        persistHidden(next);
+    }
+
+    function onUnhide(instance, name) {
+        const next = new Set(hidden);
+        next.delete(keyFor(instance, name));
+        persistHidden(next);
+    }
+
+    function onHideAll(instance) {
+        const next = new Set(hidden);
+        filteredAll
+            .filter((m) => m.instance === instance)
+            .forEach((m) => next.add(keyFor(m.instance, m.info?.monitor_name)));
+        persistHidden(next);
+    }
+
+    async function onUnhideAll(instance) {
+        const bl = await getBlocklist();
+        const nextArr = (bl?.monitors ?? []).filter((k) => k.instance !== instance);
+        await saveBlocklist({ monitors: nextArr });
+        setHidden(new Set(nextArr.map((k) => keyFor(k.instance, k.name))));
+    }
+
+    // ---------------- UI ----------------
+    function openInstance(name) {
+        window.location.hash = "/sede/" + encodeURIComponent(name);
+    }
+
+    function tabBtn(v, t) {
+        return (
+            <button
+                className={`btn tab ${view === v ? "active" : ""}`}
+                onClick={() => setView(v)}
+            >
+                {t}
+            </button>
+        );
+    }
+
+    if (route.name === "sede") {
+        return (
+            <div className="container">
+                <InstanceDetail
+                    instanceName={route.instance}
+                    monitorsAll={filteredAll}
+                    hiddenSet={hidden}
+                    onHide={onHide}
+                    onUnhide={onUnhide}
+                    onHideAll={onHideAll}
+                    onUnhideAll={onUnhideAll}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="container">
+            <h1>Uptime Central</h1>
+
+            <Cards counts={headerCounts} status={effectiveStatus} onSetStatus={setStatus} />
+
+            <div className="controls">
+                <Filters
+                    monitors={monitors}
+                    value={filters}
+                    onChange={setFilters}
+                />
+
+                <div style={{ display: "flex", gap: 8 }}>
+                    {tabBtn("grid", "Grid")}
+                    {tabBtn("table", "Tabla")}
+                </div>
+            </div>
+
+            <SLAAlerts
+                monitors={visible}
+                config={SLA_CONFIG}
+                onOpenInstance={openInstance}
+            />
+
+            {view === "grid" ? (
+                <ServiceGrid
+                    monitorsAll={filteredAll}
+                    hiddenSet={hidden}
+                    onHideAll={onHideAll}
+                    onUnhideAll={onUnhideAll}
+                    onOpen={openInstance}
+                />
+            ) : (
+                <MonitorsTable
+                    monitors={visible}
+                    hiddenSet={hidden}
+                    onHide={onHide}
+                    onUnhide={onUnhide}
+                    slaConfig={SLA_CONFIG}
+                />
+            )}
+        </div>
+    );
+}
+

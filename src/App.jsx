@@ -1,0 +1,335 @@
+import AlertsBanner from "./components/AlertsBanner.jsx";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Cards from "./components/Cards.jsx";
+import Filters from "./components/Filters.jsx";
+import ServiceGrid from "./components/ServiceGrid.jsx";
+import MonitorsTable from "./components/MonitorsTable.jsx";
+import InstanceDetail from "./components/InstanceDetail.jsx";
+import SLAAlerts from "./components/SLAAlerts.jsx";
+import AutoPlayControls from "./components/AutoPlayControls.jsx";
+import AutoPlayer from "./components/AutoPlayer.jsx";
+import { fetchAll, getBlocklist, saveBlocklist } from "./api.js";
+import History from "./historyEngine.js";
+import { notify } from "./utils/notify.js";
+
+const SLA_CONFIG = { uptimeTarget: 99.9, maxLatencyMs: 800 };
+const ALERT_AUTOCLOSE_MS = 10000;
+// Variación de latencia por SERVICIO
+const DELTA_ALERT_MS = 100;           // umbral (ms)
+const DELTA_COOLDOWN_MS = 60 * 1000;  // cooldown por servicio (ms)
+const DELTA_WINDOW = 5;            // nº de valores para el promedio (por servicio)
+
+/** Ruteo por hash: #/sede/<instancia> | vacío -> home */
+function getRoute() {
+  const parts = (window.location.hash || "").slice(1).split("/").filter(Boolean);
+  if (parts[0] === "sede" && parts[1]) return { name: "sede", instance: decodeURIComponent(parts[1]) };
+  return { name: "home" };
+}
+const keyFor  = (i, n="") => JSON.stringify({ i, n });
+const fromKey = (k) => { try { return JSON.parse(k); } catch { return { i:"", n:"" }; } };
+
+export default function App() {
+  // ===== Playlist (tiempo unificado en sec) =====
+  const [autoRun, setAutoRun]                     = useState(false);
+  const [autoSec, setAutoSec]                     = useState(10);
+  const [autoOrder, setAutoOrder]                 = useState("downFirst");
+  const [autoOnlyIncidents, setAutoOnlyIncidents] = useState(false);
+  const [autoLoop, setAutoLoop]                   = useState(true);
+
+  // ===== Estado base =====
+  const [monitors, setMonitors]   = useState([]);
+  const [instances, setInstances] = useState([]);
+  const [filters, setFilters]     = useState({ instance:"", type:"", q:"", status:"all" });
+  const [hidden, setHidden]       = useState(new Set());
+  const [view, setView]           = useState("grid");
+  const [route, setRoute]         = useState(getRoute());
+  const [alerts, setAlerts]       = useState([]);
+
+  // Ruteo por hash
+  useEffect(() => {
+    const onHash = () => setRoute(getRoute());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  // ===== Init: primer fetch + blocklist + snapshot =====
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    (async () => {
+      try {
+        const { instances, monitors } = await fetchAll();
+        setInstances(instances);
+        setMonitors(monitors);
+        History.addSnapshot(monitors);
+        try {
+          const bl = await getBlocklist();
+          setHidden(new Set((bl?.monitors ?? []).map(k => keyFor(k.instance, k.name))));
+        } catch {}
+      } catch (e) { console.error(e); }
+    })();
+  }, []);
+
+  // ===== Polling 5s + alertas DOWN + variación por servicio =====
+  const lastStatus  = useRef(new Map()); // key -> last status
+  const lastRT      = useRef(new Map()); // key -> last responseTime (ms)
+  const lastDeltaAt = useRef(new Map()); // key -> last alert ts
+
+  // Siembra inicial de lastRT/lastStatus la primera vez que llegan monitores
+  useEffect(() => {
+    const r1 = new Map(), r2 = new Map();
+    for (const x of monitors) {
+      const k = keyFor(x.instance, x.info?.monitor_name);
+      r1.set(k, x.latest?.status ?? 1);
+      if (typeof x.latest?.responseTime === "number") r2.set(k, x.latest.responseTime);
+    }
+    lastStatus.current = r1;
+    lastRT.current     = r2;
+  }, []); // una sola vez
+
+  useEffect(() => {
+    let stop = false;
+    async function loop() {
+      if (stop) return;
+      try {
+        const { instances, monitors } = await fetchAll();
+        setInstances(instances);
+        setMonitors(monitors);
+        History.addSnapshot(monitors);
+
+        // Alertas de cambio UP->DOWN (no repetir)
+        const prev = lastStatus.current, next = new Map(), newDowns = [];
+        for (const m of monitors) {
+          const k = keyFor(m.instance, m.info?.monitor_name);
+          const st = m.latest?.status ?? 1;
+          const was = prev.get(k);
+          if (was === 1 && st === 0) newDowns.push({ id:k, instance:m.instance, name:m.info?.monitor_name, ts:Date.now() });
+          next.set(k, st);
+        }
+        lastStatus.current = next;
+        // --- Variación vs promedio últimos N (por servicio) ---
+        try {
+          const N = DELTA_WINDOW;
+          for (const m of monitors) {
+            const key = keyFor(m.instance, m.info?.monitor_name);
+            const rt = (typeof m.latest?.responseTime === "number") ? m.latest.responseTime : null;
+            if (rt == null) continue;
+            // historial previo (sin incluir el actual)
+            const hist = lastRtHistory.current.get(key) || [];
+            const baseArr = hist.slice(-N);
+            if (baseArr.length === N) {
+              const avg = Math.round(baseArr.reduce((a,b)=>a+b,0) / N);
+              const delta = rt - avg;
+              if (Math.abs(delta) >= DELTA_ALERT_MS) {
+                const now = Date.now();
+                const last = lastDeltaAt.current.get(key) || 0;
+                if (now - last >= DELTA_COOLDOWN_MS) {
+                  const msg = `Variación ${delta>0?'+':''}${Math.round(delta)} ms vs prom ${avg} ms en ${m.info?.monitor_name || ''} (${m.instance})`;
+                  const id  = `delta:${key}:${now}`;
+                  setAlerts(a => [...a, { id, instance:m.instance, name:m.info?.monitor_name, ts:now, msg }]);
+                  try { notify("Alerta de variación", msg); } catch {}
+                  lastDeltaAt.current.set(key, now);
+                }
+              }
+            }
+            // actualizar historial con el valor actual
+            hist.push(rt);
+            if (hist.length > N) hist.shift();
+            lastRtHistory.current.set(key, hist);
+            lastRT.current.set(key, rt);
+          }
+        } catch {}
+        // --- fin variación ---
+
+        if (newDowns.length) {
+          setAlerts(a => {
+            const ids = new Set(a.map(x => x.id));
+            const add = newDowns.filter(d => !ids.has(d.id));
+            return [...a, ...add];
+          });
+        }
+        // Mantener solo los que siguen DOWN
+        setAlerts(a => a.filter(x => next.get(x.id) === 0));
+
+      } catch (e) {
+        console.error(e);
+      }
+      setTimeout(loop, 5000);
+    }
+    loop();
+    return () => { stop = true; };
+  }, []);
+
+  // ===== Filtros base (sin estado UP/DOWN) =====
+  const baseMonitors = useMemo(() => monitors.filter(m => {
+    if (filters.instance && m.instance !== filters.instance) return false;
+    if (filters.type && m.info?.monitor_type !== filters.type) return false;
+    if (filters.q) {
+      const hay = ((m.info?.monitor_name ?? "") + " " + (m.info?.monitor_url ?? "")).toLowerCase();
+      if (!hay.includes(filters.q.toLowerCase())) return false;
+    }
+    return true;
+  }), [monitors, filters.instance, filters.type, filters.q]);
+
+  // ===== Métricas header =====
+  const headerCounts = useMemo(() => {
+    const up    = baseMonitors.filter(m => m.latest?.status === 1).length;
+    const down  = baseMonitors.filter(m => m.latest?.status === 0).length;
+    const total = baseMonitors.length;
+    const rts   = baseMonitors.map(m => m.latest?.responseTime).filter(v => v != null);
+    const avgMs = rts.length ? Math.round(rts.reduce((a,b)=>a+b,0)/rts.length) : null;
+    return { up, down, total, avgMs };
+  }, [baseMonitors]);
+
+  // ===== Estado efectivo UP/DOWN =====
+  const effectiveStatus = filters.status;
+  function setStatus(s) { setFilters(p => ({ ...p, status: s })); }
+
+  // ===== Lista final (con estado) =====
+  const filteredAll = useMemo(() => baseMonitors.filter(m => {
+    if (effectiveStatus === "up"   && m.latest?.status !== 1) return false;
+    if (effectiveStatus === "down" && m.latest?.status !== 0) return false;
+    return true;
+  }), [baseMonitors, effectiveStatus]);
+
+  // Visibles (excluye hidden)
+  const visible = filteredAll.filter(m => !hidden.has(keyFor(m.instance, m.info?.monitor_name)));
+
+  // ===== Hidden / Blocklist =====
+  async function persistHidden(next) {
+    const arr = [...next].map(k => { const { i, n } = fromKey(k); return { instance: i, name: n }; });
+    try { await saveBlocklist({ monitors: arr }); } catch {}
+    setHidden(next);
+  }
+  function onHide(i, n)   { const s = new Set(hidden); s.add(keyFor(i, n));                 persistHidden(s); }
+  function onUnhide(i, n) { const s = new Set(hidden); s.delete(keyFor(i, n));              persistHidden(s); }
+  function onHideAll(instance) {
+    const s = new Set(hidden);
+    filteredAll.filter(m => m.instance === instance)
+      .forEach(m => s.add(keyFor(m.instance, m.info?.monitor_name)));
+    persistHidden(s);
+  }
+  async function onUnhideAll(instance) {
+    const bl = await getBlocklist();
+    const nextArr = (bl?.monitors ?? []).filter(k => k.instance !== instance);
+    try { await saveBlocklist({ monitors: nextArr }); } catch {}
+    setHidden(new Set(nextArr.map(k => keyFor(k.instance, k.name))));
+  }
+
+  // Navegación a una sede
+  function openInstance(name) { window.location.hash = "/sede/" + encodeURIComponent(name); }
+
+  // ===== Render =====
+  return (
+    <div className="container" data-route={route.name}>
+
+      {/* Fila superior: Nombre + Home */}
+      <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <h1 style={{margin:0}}>Uptime Central</h1>
+        <button className="home-btn" type="button" onClick={()=>{window.location.hash="";}} title="Ir al inicio">Home</button>
+      </div>
+
+      {/* Fila de filtros + Solo DOWN + Playlist (de izq. a der.) */}
+      <div className="header-bar" style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginTop:6}}>
+        {/* Filtros */}
+        <div className="filters-inline" style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <Filters monitors={monitors} value={filters} onChange={setFilters} />
+            <input
+              type="checkbox"
+              checked={effectiveStatus === "down"}
+              onChange={(e)=> setStatus(e.target.checked ? "down" : "all")}
+            />
+        </div>
+
+        {/* Playlist a la derecha */}
+        <div className="push-right">
+          <AutoPlayControls
+            running={autoRun}
+            onToggle={()=>setAutoRun(v=>!v)}
+            sec={autoSec} setSec={setAutoSec}
+            order={autoOrder} setOrder={setAutoOrder}
+            onlyIncidents={autoOnlyIncidents} setOnlyIncidents={setAutoOnlyIncidents}
+            loop={autoLoop} setLoop={setAutoLoop}
+          />
+        </div>
+      </div>
+
+      {/* Alertas debajo de la barra */}
+      <AlertsBanner
+        alerts={alerts}
+        onClose={(id) => setAlerts(a => a.filter(x => x.id !== id))}
+        autoCloseMs={ALERT_AUTOCLOSE_MS}
+      />
+
+      {/* Tarjetas de resumen */}
+      <Cards counts={headerCounts} status={effectiveStatus} onSetStatus={setStatus} />
+
+      {/* Contenido: AutoPlayer, toggles de vista, etc. */}
+      <div className="controls">
+        {/* Motor del playlist */}
+        <AutoPlayer
+          enabled={autoRun}
+          sec={autoSec}
+          order={autoOrder}
+          onlyIncidents={autoOnlyIncidents}
+          loop={autoLoop}
+          filteredAll={filteredAll}
+          route={route}
+          openInstance={openInstance}
+        />
+
+        {route.name !== "sede" && (
+          <div className="global-toggle" style={{ display:"flex", gap:8 }}>
+            <button
+              type="button"
+              className={"btn tab " + (view==="grid" ? "active" : "")}
+              onClick={() => setView("grid")}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              className={"btn tab " + (view==="table" ? "active" : "")}
+              onClick={() => setView("table")}
+            >
+              Tabla
+            </button>
+          </div>
+        )}
+      </div>
+
+      <SLAAlerts monitors={visible} config={SLA_CONFIG} onOpenInstance={openInstance} />
+
+      {route.name === "sede" ? (
+        <div className="container">
+          <InstanceDetail
+            instanceName={route.instance}
+            monitorsAll={filteredAll}
+            hiddenSet={hidden}
+            onHide={onHide}
+            onUnhide={onUnhide}
+            onHideAll={onHideAll}
+            onUnhideAll={onUnhideAll}
+          />
+        </div>
+      ) : view === "grid" ? (
+        <ServiceGrid
+          monitorsAll={filteredAll}
+          hiddenSet={hidden}
+          onHideAll={onHideAll}
+          onUnhideAll={onUnhideAll}
+          onOpen={openInstance}
+        />
+      ) : (
+        <MonitorsTable
+          monitors={visible}
+          hiddenSet={hidden}
+          onHide={onHide}
+          onUnhide={onUnhide}
+          slaConfig={SLA_CONFIG}
+        />
+      )}
+    </div>
+  );
+}

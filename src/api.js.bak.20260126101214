@@ -1,0 +1,146 @@
+const API = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) || "/";
+
+const log  = (...args) => console.info("[kuma-api]", ...args);
+const warn = (...args) => console.warn("[kuma-api]", ...args);
+const err  = (...args) => console.error("[kuma-api]", ...args);
+
+async function fetchJSON(path, init = {}) {
+  const res = await fetch(API + path, {
+    headers: { "Accept": "application/json", ...(init.headers || {}) },
+    ...init,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ${res.statusText} - ${text}`);
+  }
+  return res.json();
+}
+
+export async function fetchSummary() {
+  const r = await fetchJSON("api/summary");
+  log("summary OK");
+  return r;
+}
+
+// Intenta rutas alternativas; si ninguna existe, devuelve [] y se esperará al SSE
+export async function fetchMonitors() {
+  const candidates = [
+    "api/monitors",
+    "api/monitor",
+    "api/monitor/list",
+    "api/monitors/list",
+    "api/state",
+    "monitors",
+  ];
+  for (const p of candidates) {
+    try {
+      const r = await fetchJSON(p);
+      const arr = Array.isArray(r)
+        ? r
+        : Array.isArray(r?.monitors)
+          ? r.monitors
+          : Array.isArray(r?.data?.monitors)
+            ? r.data.monitors
+            : null;
+      if (arr) { log("monitors OK via", p, `(${arr.length})`); return arr; }
+      warn("monitors shape inesperada en", p, r);
+    } catch (e) {
+      log("monitors no en", p, "-", (e && e.message) || e);
+    }
+  }
+  warn("Ninguna ruta de 'monitors' respondió. Se esperará al SSE.");
+  return [];
+}
+
+// SSE: prueba varias rutas/eventos y reconecta
+export function openStream(onMessage, { retryMs = 2000, maxRetryMs = 15000 } = {}) {
+  const PATHS = ["/api/stream", "/stream", "/api/sse", "/events"];
+  const EVENTS = ["tick", "message"];
+  let stopped = false, es = null, pathIdx = 0, backoff = retryMs, received = false;
+
+  const attach = () => {
+    EVENTS.forEach(ev => {
+      es.addEventListener(ev, (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          received = true; backoff = retryMs;
+          log(`SSE '${ev}' via ${PATHS[pathIdx]}`);
+          onMessage?.(payload);
+        } catch (e) { warn("SSE parse err:", e); }
+      });
+    });
+    es.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        received = true; backoff = retryMs;
+        log(`SSE 'message' (sin event) via ${PATHS[pathIdx]}`);
+        onMessage?.(payload);
+      } catch (e) { warn("SSE parse err (message):", e); }
+    };
+  };
+
+  const tryNext = () => {
+    if (stopped) return;
+    if (pathIdx >= PATHS.length) {
+      setTimeout(() => { if (!stopped) { pathIdx = 0; backoff = Math.min(backoff * 2, maxRetryMs); start(); } }, backoff);
+      return;
+    }
+    start();
+  };
+
+  const start = () => {
+    const path = PATHS[pathIdx]; received = false;
+    try { log("SSE intentando", path); es = new EventSource(API + path); }
+    catch (e) { warn("EventSource init err:", e); pathIdx++; return tryNext(); }
+
+    const watchdog = setTimeout(() => {
+      if (!received) { warn("SSE sin datos en", path, "→ siguiente"); es.close(); pathIdx++; tryNext(); }
+    }, 5000);
+
+    es.onopen = () => log("SSE abierto en", path);
+    es.onerror = () => { clearTimeout(watchdog); es?.close?.(); if (!stopped) { warn("SSE error en", path, "→ siguiente"); pathIdx++; tryNext(); } };
+    attach();
+  };
+
+  start();
+  return () => { stopped = true; try { es?.close?.(); } catch {} };
+}
+
+// Blocklist con fallback en localStorage
+const BL_KEY = "kuma_blocklist_v1";
+
+export async function getBlocklist() {
+  try {
+    const r = await fetchJSON("api/blocklist");
+    log("blocklist server OK");
+    return r;
+  } catch (e) {
+    try {
+      const raw = localStorage.getItem(BL_KEY);
+      const val = raw ? JSON.parse(raw) : { monitors: [] };
+      warn("blocklist server no disponible, usando localStorage");
+      return val;
+    } catch {
+      return { monitors: [] };
+    }
+  }
+}
+
+export async function saveBlocklist(b) {
+  try {
+    await fetchJSON("api/blocklist", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b),
+    });
+    log("blocklist server guardado");
+    return;
+  } catch (e) {
+    try {
+      localStorage.setItem(BL_KEY, JSON.stringify(b));
+      warn("blocklist guardado en localStorage (fallback)");
+    } catch (e2) {
+      err("no se pudo guardar blocklist ni en server ni en localStorage", e2);
+    }
+  }
+}

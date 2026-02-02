@@ -1,0 +1,23 @@
+export default function Filters({ monitors = [], value, onChange }) {
+  const instances = [...new Set(monitors.map(m=>m.instance))].sort();
+  const types = [...new Set(monitors.map(m=>m.info?.monitor_type).filter(Boolean))].sort();
+  const set = (k,v)=>onChange({ ...value, [k]: v });
+  return (
+    <div className="controls">
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <select className="sel" value={value.instance} onChange={e=>set("instance",e.target.value)}>
+          <option value="">Todas las sedes</option>
+          {instances.map(i=><option key={i} value={i}>{i}</option>)}
+        </select>
+        <select className="sel" value={value.type} onChange={e=>set("type",e.target.value)}>
+          <option value="">Todos los tipos</option>
+          {types.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+        <input className="input" style={{width:240}} placeholder="Buscar…" value={value.q} onChange={e=>set("q",e.target.value)} />
+        <label className="muted">
+          <input type="checkbox" checked={value.onlyDown} onChange={e=>set("onlyDown",e.target.checked)} /> Solo DOWN
+        </label>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,25 @@
+import React from "react";
+
+const MAP = [
+  { key: "whatsapp", src: "/logos/whatsapp.svg" },
+  { key: "facebook", src: "/logos/facebook.svg" },
+  { key: "meta", src: "/logos/facebook.svg" },
+  { key: "apple", src: "/logos/apple.svg" },
+  { key: "icloud", src: "/logos/apple.svg" },
+  { key: "netflix", src: "/logos/netflix.svg" },
+];
+
+function pickLogo({ name = "", url = "", host = "" }) {
+  const hay = `${name} ${url} ${host}`.toLowerCase();
+  const hit = MAP.find(m => hay.includes(m.key));
+  return hit?.src || "/logos/default.svg";
+}
+
+export default function Logo({ monitor }) {
+  const src = pickLogo({
+    name: monitor?.info?.monitor_name || "",
+    url: monitor?.info?.monitor_url || "",
+    host: monitor?.info?.monitor_hostname || "",
+  });
+  return <img src={src} alt="logo servicio" className="logo" width={20} height={20} />;
+}

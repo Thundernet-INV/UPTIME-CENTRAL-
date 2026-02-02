@@ -1,0 +1,59 @@
+import Mem from './historyMem';
+import DB from './historyDB'; // puede fallar en tu navegador; por eso es background
+
+// normaliza un punto con muchos alias (compat con gráficas)
+function mkPoint(ts, ms){
+  const sec = (typeof ms === 'number') ? ms/1000 : null;
+  return { ts, x: ts, y: sec, value: sec, sec, ms, avgMs: ms, xy: [ts, sec] };
+}
+
+const History = {
+  // 1) Persistencia: primero memoria (rápido para graficar), luego IndexedDB (en background)
+  addSnapshot(monitors) {
+    try { Mem.addSnapshots(monitors); } catch {}
+    try { DB.addSnapshots?.(monitors); DB.pruneOlderThanDays?.(7); } catch {}
+    try { if (typeof window !== 'undefined') window.__histLastAddTs = Date.now(); } catch {}
+  },
+
+  // 2) Serie cruda por monitor
+  async getSeriesForMonitor(instance, name, sinceMs = 15*60*1000) {
+    // memoria primero
+    const mem = Mem.getSeriesForMonitor(instance, name, sinceMs) || [];
+    if (mem.length) return mem.map(r => mkPoint(r.ts, r.ms));
+    // si memoria aún vacía (recién arrancado), intenta IndexedDB
+    const key = `${instance}::${name||''}`;
+    const rows = await (DB.getSeriesFor ? DB.getSeriesFor(key, sinceMs) : Promise.resolve([]));
+    return (rows||[]).filter(r => typeof r.responseTime === 'number').map(r => mkPoint(r.ts, r.responseTime));
+  },
+
+  // 3) Serie promedio por instancia (buckets)
+  async getAvgSeriesByInstance(instance, sinceMs = 15*60*1000, bucketMs = 60*1000) {
+    const mem = Mem.getAvgSeriesByInstance(instance, sinceMs, bucketMs);
+    if (mem.length) return mem.map(p => mkPoint(p.ts, p.avgMs));
+    const arr = await (DB.getAvgSeriesByInstance ? DB.getAvgSeriesByInstance(instance, sinceMs, bucketMs) : Promise.resolve([]));
+    return (arr||[]).map(p => mkPoint(p.ts, p.avgMs));
+  },
+
+  // 4) Todas las series por instancia (objeto)
+  async getAllForInstance(instance, sinceMs = 15*60*1000) {
+    const obj = Mem.getAllForInstance(instance, sinceMs);
+    if (obj && Object.keys(obj).length) {
+      const out = {};
+      for (const [name, a] of Object.entries(obj)) out[name] = a.map(r => mkPoint(r.ts, r.ms));
+      return out;
+    }
+    const dbObj = await (DB.getAllForInstance ? DB.getAllForInstance(instance, sinceMs) : Promise.resolve({}));
+    const out = {};
+    for (const [name, arr] of Object.entries(dbObj || {})) {
+      out[name] = (arr||[]).filter(r => typeof r.responseTime === 'number').map(r => mkPoint(r.ts, r.responseTime));
+    }
+    return out;
+  },
+
+  debugInfo() { return Mem.debugInfo(); },
+};
+
+// Exponer para consola
+try { if (typeof window !== 'undefined') window.__hist = History; } catch {}
+
+export default History;

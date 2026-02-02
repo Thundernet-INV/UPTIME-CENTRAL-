@@ -1,0 +1,56 @@
+=== AUDIT DASHBOARD ORIGIN (20260126_174554) ===
+
+-- 1) HEADERS de http://10.10.31.31/ --
+HTTP/1.1 200 OK
+Server: nginx/1.18.0 (Ubuntu)
+Date: Mon, 26 Jan 2026 21:45:54 GMT
+Content-Type: text/html
+Content-Length: 398
+Last-Modified: Fri, 23 Jan 2026 20:48:01 GMT
+Connection: keep-alive
+ETag: "6973de81-18e"
+Accept-Ranges: bytes
+
+
+-- 2) Primeras líneas del HTML remoto --
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Uptime Central</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <script type="module" crossorigin src="/assets/index-CGDnMdw3.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D_aYgIer.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+
+-- 3) Huellas de Vite dev en el HTML remoto --
+
+-- 4) ¿Quién escucha en :80 y :5173? --
+
+-- 5) Nginx: ¿hay proxy_pass o referencia a 5173? --
+
+-- 6) systemctl status nginx (resumen) --
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
+     Active: active (running) since Fri 2026-01-23 16:48:48 -04; 3 days ago
+       Docs: man:nginx(8)
+    Process: 541148 ExecStartPre=/usr/sbin/nginx -t -q -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+    Process: 541149 ExecStart=/usr/sbin/nginx -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+   Main PID: 541150 (nginx)
+      Tasks: 9 (limit: 28698)
+     Memory: 21.0M
+        CPU: 26.040s
+     CGroup: /system.slice/nginx.service
+             ├─541150 "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;"
+
+-- 7) Comparativa de hash: local dist/index.html vs remoto --
+local:  8676e369b24350981cb8b11b363de0ea822cce84102db6409033e8af09072e27
+remoto: 8676e369b24350981cb8b11b363de0ea822cce84102db6409033e8af09072e27
+=> El HTML remoto coincide con el build local actual.
+
+-- 8) Deducción rápida --
+Parece contenido estático servido por Nginx; si es 'viejo', hay que reemplazar el dist en /var/www/... y recargar Nginx.

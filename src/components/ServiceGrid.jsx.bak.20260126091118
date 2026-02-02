@@ -1,0 +1,21 @@
+import ServiceCard from "./ServiceCard.jsx";
+export default function ServiceGrid({ monitorsAll = [], hiddenSet, onHideAll, onUnhideAll, onOpen }) {
+  const by = (monitorsAll||[]).reduce((a,m)=>{ (a[m.instance]=a[m.instance]||[]).push(m); return a; },{});
+  const make = (inst,arr)=>{
+    const visible = arr.filter(m=>!hiddenSet.has(`${m.instance}|${m.info?.monitor_name}`));
+    const up = visible.filter(m=>m.latest?.status===1).length;
+    const down = visible.filter(m=>m.latest?.status===0).length;
+    const total = visible.length;
+    const rts = visible.map(m=>m.latest?.responseTime).filter(v=>v!=null);
+    const avg = rts.length? Math.round(rts.reduce((a,b)=>a+b,0)/rts.length):null;
+    const len = Math.min(...visible.map(m=>(m.points||[]).length).filter(Boolean));
+    const trend = Number.isFinite(len) ? Array.from({length:Math.min(len,50)},(_,i)=>{
+      const vals = visible.map(m=>m.points[m.points.length-len+i]?.responseTime).filter(v=>v!=null);
+      return vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+    }) : [];
+    return { sede:inst, data:{ up,down,total,avg, trend, monitors:arr } };
+  };
+  const cards = Object.entries(by).map(([inst,arr])=>make(inst,arr));
+  if (!cards.length) return <div className="muted">No hay datos para la cuadrícula (ver filtros o sedes).</div>;
+  return <div className="grid">{cards.map(c=> <ServiceCard key={c.sede} {...c} onHideAll={onHideAll} onUnhideAll={onUnhideAll} onOpen={onOpen}/>)}</div>;
+}

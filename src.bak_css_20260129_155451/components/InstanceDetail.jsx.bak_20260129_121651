@@ -1,0 +1,84 @@
+import ChartFallback from "./ChartFallback.jsx";
+import React, { useMemo, useState } from "react";
+import HistoryChart from "./HistoryChart.jsx";
+import History from "../historyEngine.js";
+import Sparkline from "./Sparkline.jsx";
+import Logo from "./Logo.jsx";
+import MonitorCard from "./MonitorCard.jsx";
+import { hostFromUrl } from "../lib/logoUtil.js";
+export default function InstanceDetail({ instanceName, monitorsAll=[], hiddenSet=new Set(), onHide, onUnhide, onHideAll, onUnhideAll }) {
+  const [mode, setMode] = useState("table"); // table | grid
+  const [focus, setFocus] = useState(null);  // monitor_name | null
+  const group = useMemo(()=>monitorsAll.filter(m=>m.instance===instanceName), [monitorsAll, instanceName]);
+  const seriesInstance = useMemo(()=>History.getAllForInstance(instanceName), [instanceName, monitorsAll.length]);
+  const chartMode = focus ? "monitor" : "instance";
+  const chartSeries = focus ? History.getSeriesForMonitor(instanceName, focus) : seriesInstance;
+  return (
+    <div>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+        <button className="k-btn k-btn--primary" onClick={()=>window.history.back()}>← Volver</button>
+        <h2 style={{margin:0}}>{instanceName}</h2>
+        <div style={{ marginLeft:'auto', display:'flex', gap:6 }}>
+          <button type="button" className={`btn tab ${mode==="table"?"active":""}`} aria-pressed={mode==="table"} onClick={()=>setMode("table")}>Tabla</button>
+          <button type="button" className={`btn tab ${mode==="grid"?"active":""}`}  aria-pressed={mode==="grid"}  onClick={()=>setMode("grid")}>Grilla</button>
+        </div>
+      </div>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+        {focus
+          ? <div className="k-chip">Mostrando: <strong>{focus}</strong> <button className="k-btn k-btn--ghost" style={{marginLeft:8}} onClick={()=>setFocus(null)}>Ver sede</button></div>
+          : <div className="k-chip k-chip--muted">Mostrando: <strong>Promedio de la sede</strong></div>}
+      </div>
+      {chartMode==="monitor" ? <HistoryChart mode="monitor" seriesMon={chartSeries} title={focus||"Latencia (ms)"} />
+                              : <HistoryChart mode="instance" series={chartSeries} />}
+      <div style={{ marginTop: 12 }}>
+        <button className="k-btn k-btn--danger" onClick={()=>onHideAll?.(instanceName)} style={{ marginRight: 8 }}>Ocultar todos</button>
+        <button className="k-btn k-btn--ghost"  onClick={()=>onUnhideAll?.(instanceName)}>Mostrar todos</button>
+      </div>
+      {mode==="table" ? (
+        <>
+          <h3 style={{ marginTop: 20 }}>Servicios</h3>
+          <table className="k-table">
+            <thead><tr><th>Servicio</th><th>Estado</th><th>Latencia</th><th>Tendencia</th><th>Acciones</th></tr></thead>
+            <tbody>
+              {group.map((m,i)=>{
+                const st = m.latest?.status === 1 ? "UP" : "DOWN";
+                const icon = st==="UP" ? "🟢" : "🔴";
+                const lat = (typeof m.latest?.responseTime === 'number') ? `${m.latest.responseTime} ms` : "—";
+                const host = hostFromUrl(m.info?.monitor_url || '');
+                const seriesMon = History.getSeriesForMonitor(instanceName, m.info?.monitor_name);
+                return (
+                  <tr key={i}>
+                    <td className="k-cell-service" onClick={()=>setFocus(m.info?.monitor_name)} style={{cursor:'pointer'}}>
+                      <Logo monitor={m} size={18} href={m.info?.monitor_url || ""} />
+                      <div className="k-service-text">
+                        <div className="k-service-name">{m.info?.monitor_name}</div>
+                        <div className="k-service-sub">{host || (m.info?.monitor_url||'')}</div>
+                      </div>
+                    </td>
+                    <td style={{ fontWeight:'bold', color: st==="UP" ? "#16a34a" : "#dc2626" }}>{icon} {st}</td>
+                    <td>{lat}</td>
+                    <td style={{minWidth:120}}><Sparkline points={seriesMon} color={st==="UP" ? "#16a34a" : "#dc2626"} /></td>
+                    <td>
+                      <button className="k-btn k-btn--ghost" onClick={()=>onHide?.(m.instance, m.info?.monitor_name)}>Ocultar</button>
+                      <button className="k-btn k-btn--ghost" style={{marginLeft:6}} onClick={()=>onUnhide?.(m.instance, m.info?.monitor_name)}>Mostrar</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <>
+          <h3 style={{ marginTop: 20 }}>Servicios</h3>
+          <div className="k-grid-services">
+            {group.map((m,i)=>{
+              const seriesMon = History.getSeriesForMonitor(instanceName, m.info?.monitor_name);
+              return <MonitorCard key={i} monitor={m} series={seriesMon} onHide={onHide} onUnhide={onUnhide} onFocus={(name)=>setFocus(name)} />;
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

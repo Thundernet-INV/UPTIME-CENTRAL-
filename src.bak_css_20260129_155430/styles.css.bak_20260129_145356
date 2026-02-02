@@ -1,0 +1,726 @@
+:root{
+  --bg:#f7f8fa; --card:#ffffff; --muted:#6b7280; --text:#111827;
+  --ok:#16a34a; --warn:#f59e0b; --down:#dc2626; --info:#2563eb; --violet:#7c3aed;
+  --border:#e5e7eb; --shadow:0 1px 8px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;}
+h1{font-size:28px;margin:16px 0 10px 0}
+h2{font-size:20px;margin:0}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:12px}
+.kpi{background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:14px;border-left:6px solid var(--info)}
+.kpi .label{font-size:12px;color:var(--muted)}
+.kpi.ok{border-left-color:var(--ok)}
+.kpi.down{border-left-color:var(--down)}
+.kpi.info{border-left-color:var(--info)}
+.kpi.violet{border-left-color:var(--violet)}
+
+.controls{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px 0;gap:12px;flex-wrap:wrap}
+.sel, .btn, .input{border:1px solid var(--border);border-radius:8px;background:#fff;padding:8px 10px}
+.btn{cursor:pointer}
+.btn.primary{border-color:var(--info);color:var(--info)}
+.btn.danger{border-color:var(--down);color:var(--down)}
+.btn.dark{background:#111827;color:#fff;border-color:#111827}
+.btn.tab{background:#fff}
+.btn.tab.active{background:#111827;color:#fff}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:14px}
+.click{cursor:pointer}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;color:#fff;font-size:12px}
+.badge.up{background:var(--ok)} .badge.down{background:var(--down)} .muted{color:var(--muted);font-size:12px}
+
+.table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);box-shadow:var(--shadow)}
+.table th{background:#fafafa;border-bottom:1px solid var(--border);padding:10px;text-align:left}
+.table td{border-bottom:1px solid var(--border);padding:8px}
+.align-right{text-align:right}
+
+.spark{width:100%;height:36px}
+/* === Uptime Kuma UI Enhancements (SLA, tablas y mini-charts) === */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+.row-muted { opacity: 0.5; }
+.chip { padding: 2px 8px; border-radius: 999px; font-size: 12px; color: #fff; }
+.chip.up { background: #16a34a; }
+.chip.down { background: #dc2626; }
+.chip.warn { background: #d97706; }
+.btn { font-size: 12px; padding: 6px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; }
+.btn:hover { background: #e5e7eb; }
+.logo { display: block; border-radius: 4px; }
+.spark, .bars { display: block; }
+.alert-panel { margin: 8px 0 12px; padding: 8px 10px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; }
+.alert-panel ul { margin: 6px 0 0; padding-left: 18px; }
+.link { background: none; border: none; color: #2563eb; cursor: pointer; text-decoration: underline; padding: 0 4px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #fff; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-title { margin: 0; font-size: 16px; }
+.card-actions { display: flex; gap: 6px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin: 8px 0; }
+.stats .k { display: block; font-size: 11px; color: #6b7280; }
+.stats .v { font-weight: 600; }
+.sparkline { display: block; margin-top: 4px; }
+/* === fin estilos === */
+
+/* === Patch UI: header interactivo y cards robustas === */
+.k-card.k-card--summary {
+  border: 1px solid #e5e7eb;
+  border-left: 6px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+}
+.k-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 8px 0 16px;
+}
+.k-card__title { font-weight: 600; margin-bottom: 6px; }
+.k-card__content { display: flex; align-items: center; }
+.k-metric { font-size: 20px; font-weight: 700; margin-right: 6px; }
+.k-label  { color: #6b7280; font-size: 12px; }
+.is-clickable { cursor: pointer; transition: box-shadow .15s ease, transform .05s ease; }
+.is-clickable:hover { box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.is-active { outline: 2px solid #93c5fd; background: #f0f9ff; }
+
+/* Cards de sede más robustas (si usas k-card--site) */
+.k-card.k-card--site {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 140px;
+}
+.k-card__head { display: flex; justify-content: space-between; align-items: center; }
+.k-badge { font-size: 12px; font-weight: 600; color: #fff; padding: 3px 8px; border-radius: 999px; }
+.k-badge--ok { background: #16a34a; }
+.k-badge--danger { background: #dc2626; }
+.k-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; }
+.k-label { color: #6b7280; font-size: 12px; }
+.k-val   { font-weight: 600; }
+.k-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.k-btn { font-size: 12px; padding: 6px 10px; border-radius: 8px; cursor: pointer; border: 1px solid #e5e7eb; background: #f9fafb; }
+.k-btn--primary { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+.k-btn--danger  { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+.k-btn--ghost   { border-color: #cbd5e1; color: #334155; background: #fff; }
+.k-btn:hover    { filter: brightness(0.98); }
+
+/* Ajuste general de grid para evitar desbordes */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+
+/* === Header cards === */
+.k-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap: 12px;
+  margin: 8px 0 16px;
+}
+.k-card.k-card--summary {
+  border: 1px solid #e5e7eb;
+  border-left: 6px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+}
+.k-card__title { font-weight: 600; margin-bottom: 6px; }
+.k-metric { font-size: 20px; font-weight: 700; margin-right: 6px; }
+.k-label  { color: #6b7280; font-size: 12px; }
+.is-clickable { cursor:pointer; transition:0.15s; }
+.is-clickable:hover { box-shadow:0 2px 10px rgba(0,0,0,.06); }
+.is-active { background:#f0f9ff; outline:2px solid #93c5fd; }
+
+
+/* === Header cards === */
+.k-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:8px 0 16px; }
+.k-card.k-card--summary { border:1px solid #e5e7eb; border-left:6px solid #e5e7eb; border-radius:10px; background:#fff; padding:12px; }
+.k-card__title { font-weight:600; margin-bottom:6px; }
+.k-metric { font-size:20px; font-weight:700; margin-right:6px; }
+.k-label { color:#6b7280; font-size:12px; }
+.is-clickable { cursor:pointer; transition: box-shadow .15s ease; }
+.is-clickable:hover { box-shadow:0 2px 10px rgba(0,0,0,.06); }
+.is-active { outline:2px solid #93c5fd; background:#f0f9ff; }
+
+/* === Alerts banner === */
+.k-alerts { position:sticky; top:0; z-index: 50; display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+.k-alert { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:8px; }
+.k-alert--danger { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+.k-alert__close { background:transparent; border:0; font-size:14px; cursor:pointer; color:#991b1b; }
+
+/* === Site cards === */
+.k-card.k-card--site { border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:14px; display:flex; flex-direction:column; gap:12px; min-height:160px; overflow:hidden; }
+.k-card__head { display:flex; justify-content:space-between; align-items:center; }
+.k-card__title { margin:0; font-size:16px; font-weight:700; }
+.k-badge { font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; color:#fff; }
+.k-badge--ok { background:#16a34a; }
+.k-badge--danger { background:#dc2626; }
+.k-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.k-val { font-weight:700; }
+.k-actions { display:flex; gap:8px; flex-wrap:nowrap; justify-content:space-between; white-space:nowrap; }
+.k-btn { font-size:12px; padding:6px 10px; border-radius:8px; cursor:pointer; border:1px solid transparent; }
+.k-btn--primary { border-color:#2563eb; color:#2563eb; background:#eff6ff; }
+.k-btn--danger  { border-color:#dc2626; color:#dc2626; background:#fef2f2; }
+.k-btn--ghost   { border-color:#cbd5e1; color:#334155; background:#fff; }
+.k-btn:hover    { filter:brightness(.97); }
+
+/* === Grid general === */
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+
+/* Tabla de InstanceDetail */
+.k-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+.k-table th {
+  text-align: left;
+  padding: 8px;
+  background: #f3f4f6;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 14px;
+}
+.k-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+/* Card clickable */
+.k-card--site.clickable {
+  cursor: pointer;
+}
+.k-card--site.clickable:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+/* Para evitar que botones dentro del card disparen apertura */
+.k-actions button {
+  z-index: 2;
+}
+
+
+/* ====== Tabla de servicios en detalle ====== */
+.k-table { width:100%; border-collapse: collapse; margin-top: 12px; }
+.k-table th { text-align:left; padding:8px; background:#f3f4f6; border-bottom:2px solid #e5e7eb; font-size:14px; }
+.k-table td { padding:8px; border-bottom:1px solid #e5e7eb; font-size:14px; vertical-align: middle; }
+
+.k-cell-service { display:flex; align-items:center; gap:10px; }
+.k-logo { width:18px; height:18px; border-radius:4px; border:1px solid #e5e7eb; background:#fff; object-fit:contain; }
+.k-logo--fallback { width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:10px; border-radius:4px; background:#e5e7eb; color:#374151; }
+.k-service-text { display:flex; flex-direction:column; }
+.k-service-name { font-weight:600; }
+.k-service-sub { font-size:12px; color:#6b7280; }
+
+/* Cards clicables */
+.k-card--site.clickable { cursor:pointer; }
+.k-card--site.clickable:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); }
+
+/* ====== Grilla de servicios en instancia ====== */
+.k-grid-services {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* Card de servicio */
+.svc-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+}
+.svc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+/* Cabecera */
+.svc-head {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.svc-titles { display: flex; flex-direction: column; }
+.svc-name { font-weight: 700; }
+.svc-sub { font-size: 12px; color: #6b7280; }
+.svc-badge {
+  color: #fff; font-size: 12px; font-weight: 600;
+  padding: 3px 8px; border-radius: 999px;
+}
+
+/* Cuerpo */
+.svc-body { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 6px; }
+.svc-lab { color: #6b7280; font-size: 12px; }
+.svc-spark { min-width: 120px; }
+
+/* Acciones */
+.svc-actions { display:flex; gap:8px; margin-top:4px; }
+
+/* Logo */
+.k-logo { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #e5e7eb; background: #fff; object-fit: contain; }
+.k-logo--fallback { display:flex; align-items:center; justify-content:center; font-size:10px; background:#e5e7eb; color:#374151; }
+
+/* Tabla ya estaba estilizada arriba; se mantiene */
+
+/* --- Fix: asegurar clics en los toggles del header --- */
+.controls { position: relative; z-index: 5; }
+.k-cards { position: relative; z-index: 1; }
+/* Si en tu layout los toggles están dentro de otro wrapper, este z-index garantiza prioridad. */
+
+/* Ocultar los botones globales Grid/Tabla cuando estoy en una sede */
+[data-route="sede"] .global-toggle { display: none !important; }
+
+/* Indicador de foco sobre la gráfica */
+.k-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  background:#eef2ff; color:#1f2937; border:1px solid #c7d2fe;
+  padding:4px 8px; border-radius:999px; font-size:12px;
+}
+.k-chip--muted {
+  background:#f3f4f6; border-color:#e5e7eb;
+}
+
+/* Autoplay / Playlist */
+.autoplay-controls .k-btn { border-color:#cbd5e1; color:#334155; background:#fff; }
+.autoplay-controls input, .autoplay-controls select {
+  border:1px solid #e5e7eb; border-radius:6px; background:#fff; color:#111827;
+}
+
+/* ===========================
+   Anti-overflow en tarjetas (Copilot patch)
+   - Evita que títulos, subtítulos o badges se salgan.
+   - Funciona con .card/.monitor-card/.service-card o con estructura por posición.
+   =========================== */
+
+/* 1) Normaliza el contenedor de la tarjeta */
+.card, .monitor-card, .service-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 10px 12px;
+  min-width: 0; /* CLAVE para permitir elipsis en hijos */
+}
+
+/* 2) Header de la tarjeta: icono + textos + badge */
+.card > *:first-child,
+.monitor-card > *:first-child,
+.service-card > *:first-child,
+.card-head, .monitor-card_head, .service-card_head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* CLAVE para que el bloque de textos pueda encogerse */
+}
+
+/* 3) Contenedor de textos (2.º hijo dentro del header) */
+.card > *:first-child > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2),
+.service-card > *:first-child > :nth-child(2),
+.card-head_texts, .monitor-cardtexts, .service-card_texts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden; /* habilita elipsis en sus hijos */
+}
+
+/* 4) Título con elipsis (1 línea) */
+.card > *:first-child > :nth-child(2) > :first-child,
+.monitor-card > *:first-child > :nth-child(2) > :first-child,
+.service-card > *:first-child > :nth-child(2) > :first-child,
+.card-title, .monitor-card_title, .service-card_title {
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-size: 15.5px;
+}
+
+/* 5) Subtítulo (dominio/url) con elipsis */
+.card > *:first-child > :nth-child(2) > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2) > :nth-child(2),
+.service-card > *:first-child > :nth-child(2) > :nth-child(2),
+.card-subtitle, .monitor-card_subtitle, .service-card_subtitle {
+  color: #6b7280;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* 6) Logo/Icono: tamaño fijo para no empujar texto */
+.card img, .monitor-card img, .service-card img,
+.card-logo, .monitor-card_logo, .service-card_logo {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+/* 7) Badge de estado: limitar ancho y evitar que rompa el header */
+.card .badge, .monitor-card .badge, .service-card .badge,
+.status-badge, .monitor-card_badge, .service-card_badge {
+  flex: 0 0 auto;
+  max-width: 72px;              /* límite duro de ancho para textos largos */
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Colores sugeridos (mantén los tuyos si ya existen) */
+.badge--up  { background:#e8f8ef; color:#0e9f6e; }
+.badge--down{ background:#fde8e8; color:#d93025; }
+
+/* 8) Pie de tarjeta (sparkline + acciones) sin desbordes */
+.card-foot, .monitor-card_foot, .service-card_foot {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+.sparkline, .monitor-card_sparkline, .service-card_sparkline { min-width: 0; width: 100%; }
+
+/* 9) Acciones (botones) */
+.card-actions, .monitor-card_actions, .service-card_actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+/* 10) Grid responsivo con mínimo 260px por tarjeta */
+.cards-grid, .services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+/* (Opcional) Permitir 2 líneas en título — descomenta si lo deseas
+.monitor-card__title, .card > *:first-child > :nth-child(2) > :first-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+*/
+
+/* ===========================
+   Anti-overflow en tarjetas (Copilot patch)
+   - Evita que títulos, subtítulos o badges se salgan.
+   - Funciona con .card/.monitor-card/.service-card o con estructura por posición.
+   =========================== */
+
+/* 1) Normaliza el contenedor de la tarjeta */
+.card, .monitor-card, .service-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 10px 12px;
+  min-width: 0; /* CLAVE para permitir elipsis en hijos */
+}
+
+/* 2) Header de la tarjeta: icono + textos + badge */
+.card > *:first-child,
+.monitor-card > *:first-child,
+.service-card > *:first-child,
+.card-head, .monitor-card_head, .service-card_head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* CLAVE para que el bloque de textos pueda encogerse */
+}
+
+/* 3) Contenedor de textos (2.º hijo dentro del header) */
+.card > *:first-child > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2),
+.service-card > *:first-child > :nth-child(2),
+.card-head_texts, .monitor-cardtexts, .service-card_texts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden; /* habilita elipsis en sus hijos */
+}
+
+/* 4) Título con elipsis (1 línea) */
+.card > *:first-child > :nth-child(2) > :first-child,
+.monitor-card > *:first-child > :nth-child(2) > :first-child,
+.service-card > *:first-child > :nth-child(2) > :first-child,
+.card-title, .monitor-card_title, .service-card_title {
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-size: 15.5px;
+}
+
+/* 5) Subtítulo (dominio/url) con elipsis */
+.card > *:first-child > :nth-child(2) > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2) > :nth-child(2),
+.service-card > *:first-child > :nth-child(2) > :nth-child(2),
+.card-subtitle, .monitor-card_subtitle, .service-card_subtitle {
+  color: #6b7280;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* 6) Logo/Icono: tamaño fijo para no empujar texto */
+.card img, .monitor-card img, .service-card img,
+.card-logo, .monitor-card_logo, .service-card_logo {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+/* 7) Badge de estado: limitar ancho y evitar que rompa el header */
+.card .badge, .monitor-card .badge, .service-card .badge,
+.status-badge, .monitor-card_badge, .service-card_badge {
+  flex: 0 0 auto;
+  max-width: 72px;              /* límite duro de ancho para textos largos */
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Colores sugeridos (mantén los tuyos si ya existen) */
+.badge--up  { background:#e8f8ef; color:#0e9f6e; }
+.badge--down{ background:#fde8e8; color:#d93025; }
+
+/* 8) Pie de tarjeta (sparkline + acciones) sin desbordes */
+.card-foot, .monitor-card_foot, .service-card_foot {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+.sparkline, .monitor-card_sparkline, .service-card_sparkline { min-width: 0; width: 100%; }
+
+/* 9) Acciones (botones) */
+.card-actions, .monitor-card_actions, .service-card_actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+/* 10) Grid responsivo con mínimo 260px por tarjeta */
+.cards-grid, .services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+/* (Opcional) Permitir 2 líneas en título — descomenta si lo deseas
+.monitor-card__title, .card > *:first-child > :nth-child(2) > :first-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+*/
+/* ===========================================================
+   Copilot patch v2 — Tarjetas sin desbordes (header robusto)
+   - Badge UP/DOWN en posición absoluta (top-right) => no empuja texto
+   - Título 2 líneas con elipsis; subtítulo 1 línea con elipsis
+   - Contenedores con min-width:0; textos con overflow hidden
+   =========================================================== */
+
+/* --- Base tarjeta --- */
+.card, .monitor-card, .service-card {
+  display:flex; flex-direction:column; gap:8px;
+  border-radius:12px; border:1px solid #e5e7eb; background:#fff;
+  padding:10px 12px; min-width:0;
+}
+
+/* --- Header tarjeta (1er hijo) --- */
+.card > *:first-child,
+.monitor-card > *:first-child,
+.service-card > *:first-child,
+.card-head, .monitor-card_head, .service-card_head {
+  position:relative;            /* <- necesario para posicionar el badge */
+  display:flex; align-items:center; gap:10px;
+  min-width:0;                  /* <- CLAVE para elipsis abajo */
+}
+
+/* --- Bloque de textos (normalmente 2º hijo del header) --- */
+.card > *:first-child > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2),
+.service-card > *:first-child > :nth-child(2),
+.card-head_texts, .monitor-cardtexts, .service-card_texts {
+  display:flex; flex-direction:column;
+  min-width:0; overflow:hidden;
+  padding-right:84px;           /* <- reserva espacio para el badge absoluto */
+}
+
+/* --- Título: 2 líneas con elipsis --- */
+.card > *:first-child > :nth-child(2) > :first-child,
+.monitor-card > *:first-child > :nth-child(2) > :first-child,
+.service-card > *:first-child > :nth-child(2) > :first-child,
+.card-title, .monitor-card_title, .service-card_title {
+  color:#111827; font-weight:600; min-width:0; overflow:hidden;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  text-overflow:ellipsis; white-space:normal;
+  line-height:1.2; font-size:15px;
+}
+
+/* --- Subtítulo: 1 línea con elipsis --- */
+.card > *:first-child > :nth-child(2) > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2) > :nth-child(2),
+.service-card > *:first-child > :nth-child(2) > :nth-child(2),
+.card-subtitle, .monitor-card_subtitle, .service-card_subtitle {
+  color:#6b7280; font-size:12.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+
+/* --- Logo/Icono: fijo, no empuja --- */
+.card img, .monitor-card img, .service-card img,
+.card-logo, .monitor-card_logo, .service-card_logo {
+  flex:0 0 auto; width:22px; height:22px; border-radius:6px; object-fit:contain;
+}
+
+/* --- Badge UP/DOWN: ABSOLUTO en top-right dentro del header --- */
+.card > *:first-child .badge,
+.monitor-card > *:first-child .badge,
+.service-card > *:first-child .badge,
+.card > *:first-child .status-badge,
+.monitor-card > *:first-child .status-badge,
+.service-card > *:first-child .status-badge,
+.card > *:first-child .monitor-card__badge,
+.monitor-card > *:first-child .monitor-card__badge,
+.service-card > *:first-child .service-card__badge {
+  position:absolute; top:8px; right:10px;
+  max-width:72px; padding:2px 8px; border-radius:9999px;
+  font-size:11px; font-weight:700; line-height:1.6; text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  background:#e8f8ef; color:#0e9f6e;   /* default (UP) */
+}
+.badge--up  { background:#e8f8ef !important; color:#0e9f6e !important; }
+.badge--down{ background:#fde8e8 !important; color:#d93025 !important; }
+
+/* --- Pie de tarjeta --- */
+.card-foot, .monitor-card_foot, .service-card_foot {
+  display:flex; align-items:center; gap:10px; min-width:0;
+}
+.sparkline, .monitor-card_sparkline, .service-card_sparkline { min-width:0; width:100%; }
+
+/* --- Acciones --- */
+.card-actions, .monitor-card_actions, .service-card_actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* --- Grid responsivo --- */
+.cards-grid, .services-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+
+/* --- Ajustes finos en pantallas muy angostas --- */
+@media (max-width: 380px) {
+  .card > *:first-child > :nth-child(2),
+  .monitor-card > *:first-child > :nth-child(2),
+  .service-card > *:first-child > :nth-child(2),
+  .card-head_texts, .monitor-cardtexts, .service-card_texts {
+    padding-right:72px; /* badge levemente más pequeño */
+  }
+  .card > *:first-child .badge,
+  .monitor-card > *:first-child .badge,
+  .service-card > *:first-child .badge,
+  .status-badge, .monitor-card_badge, .service-card_badge {
+    max-width:64px; top:6px; right:8px; font-size:10.5px;
+  }
+}
+
+/* ====== Copilot UI patch: Responsive + Cards ordenadas ====== */
+.container { max-width: 1600px; margin: 0 auto; padding: 12px; }
+.home-btn { border:1px solid #e5e7eb; border-radius:8px; padding:6px 10px; background:#fff; color:#111827; cursor:pointer; }
+.home-btn:hover { background:#f3f4f6; }
+
+.cards-grid, .services-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+
+.card, .monitor-card, .service-card { display:flex; flex-direction:column; gap:10px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; min-width:0; box-sizing:border-box; }
+
+.card > *:first-child, .monitor-card > *:first-child, .service-card > *:first-child,
+.card-head, .monitor-card__head, .service-card__head { position:relative; display:flex; align-items:center; gap:10px; min-width:0; }
+
+.card img, .monitor-card img, .service-card img, .card-logo, .monitor-card__logo, .service-card__logo { flex:0 0 auto; width:22px; height:22px; border-radius:6px; object-fit:contain; }
+
+.card > *:first-child > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2),
+.service-card > *:first-child > :nth-child(2),
+.card-head__texts, .monitor-card__texts, .service-card__texts { display:flex; flex-direction:column; min-width:0; overflow:hidden; padding-right:84px; }
+
+.card > *:first-child > :nth-child(2) > :first-child,
+.monitor-card > *:first-child > :nth-child(2) > :first-child,
+.service-card > *:first-child > :nth-child(2) > :first-child,
+.card-title, .monitor-card__title, .service-card__title {
+  color:#111827; font-weight:600; min-width:0; overflow:hidden;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  text-overflow:ellipsis; white-space:normal; line-height:1.2; font-size:15px;
+  overflow-wrap:anywhere; word-break:break-word; max-height: calc(1.2em * 2);
+}
+.card > *:first-child > :nth-child(2) > :nth-child(2),
+.monitor-card > *:first-child > :nth-child(2) > :nth-child(2),
+.service-card > *:first-child > :nth-child(2) > :nth-child(2),
+.card-subtitle, .monitor-card__subtitle, .service-card__subtitle { color:#6b7280; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+
+.card > *:first-child .badge, .monitor-card > *:first-child .badge, .service-card > *:first-child .badge,
+.status-badge, .monitor-card__badge, .service-card__badge {
+  position:absolute; top:8px; right:10px; max-width:72px; padding:2px 8px; border-radius:9999px;
+  font-size:11px; font-weight:700; line-height:1.6; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.badge--up  { background:#e8f8ef !important; color:#0e9f6e !important; }
+.badge--down{ background:#fde8e8 !important; color:#d93025 !important; }
+
+.card-foot, .monitor-card__foot, .service-card__foot { display:flex; align-items:center; gap:10px; min-width:0; }
+.sparkline, .monitor-card__sparkline, .service-card__sparkline { min-width:0; width:100%; height:44px; }
+
+.autoplay-controls .k-btn { border-color:#cbd5e1; color:#334155; background:#fff; }
+.autoplay-controls input, .autoplay-controls select { border:1px solid #e5e7eb; border-radius:6px; background:#fff; color:#111827; }
+
+@media (min-width:1800px) {
+  .container { max-width: 1920px; }
+  .cards-grid, .services-grid { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+}
+@media (max-width:480px) {
+  .cards-grid, .services-grid { grid-template-columns:1fr; }
+  .card > *:first-child .badge, .status-badge, .monitor-card__badge, .service-card__badge { top:6px; right:8px; max-width:64px; font-size:10.5px; }
+  .card > *:first-child > :nth-child(2), .card-head__texts, .monitor-card__texts, .service-card__texts { padding-right:72px; }
+}
+/* ====== /Copilot UI patch ====== */
+
+/* ===== Header tools (playlist + filtros junto a Home) ===== */
+.header-tools { gap: 8px; }
+.header-tools .autoplay-controls {
+  border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; background: #fff;
+}
+.header-tools .autoplay-controls label { font-size: 12px; color: #374151; }
+.header-tools .autoplay-controls .k-btn { border-color:#cbd5e1; color:#334155; background:#fff; }
+.header-tools .autoplay-controls input, 
+.header-tools .autoplay-controls select {
+  border:1px solid #e5e7eb; border-radius:6px; background:#fff; color:#111827;
+}
+.header-filters .filters { margin: 0; } /* por si tu Filters usa clase interna */
+@media (max-width: 980px) {
+  .header-tools { width: 100%; }
+  .header-filters { flex: 1 1 auto; min-width: 200px; }
+}

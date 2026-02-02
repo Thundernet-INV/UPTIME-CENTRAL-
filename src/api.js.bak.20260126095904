@@ -1,0 +1,166 @@
+const API = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) || "/";
+
+const log = (...args) => console.info("[kuma-api]", ...args);
+const warn = (...args) => console.warn("[kuma-api]", ...args);
+const err  = (...args) => console.error("[kuma-api]", ...args);
+
+async function fetchJSON(path, init = {}) {
+  const res = await fetch(API + path, {
+    headers: { "Accept": "application/json", ...(init.headers || {}) },
+    ...init,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ${res.statusText} - ${text}`);
+  }
+  return res.json();
+}
+
+export async function fetchSummary() {
+  try {
+    const r = await fetchJSON("api/summary");
+    log("summary OK");
+    return r;
+  } catch (e) {
+    err("summary ERR:", e);
+    throw e;
+  }
+}
+
+/**
+ * En tu agregador /api/monitors no existe (404).
+ * Este método prueba variantes comunes. Si ninguna existe, devuelve [] y la UI esperará SSE.
+ */
+export async function fetchMonitors() {
+  const candidates = [
+    "api/monitors",
+    "api/monitor",
+    "api/monitor/list",
+    "api/monitors/list",
+    "api/state",
+    "monitors",
+  ];
+  for (const p of candidates) {
+    try {
+      const r = await fetchJSON(p);
+      // autodetección de forma: {monitors: []} | [] | {data:{monitors:[]}}
+      const arr =
+        Array.isArray(r) ? r :
+        Array.isArray(r?.monitors) ? r.monitors :
+        Array.isArray(r?.data?.monitors) ? r.data.monitors :
+        null;
+      if (arr) {
+        log("monitors OK via", p, `(${arr.length})`);
+        return arr;
+      }
+      // si no parece una lista, intenta siguiente
+      warn("monitors shape inesperada en", p, r);
+    } catch (e) {
+      // 404/500 -> probar siguiente
+      log("monitors no en", p, "-", (e && e.message) || e);
+    }
+  }
+  warn("Ninguna ruta de 'monitors' respondió. Se esperará al SSE.");
+  return [];
+}
+
+/**
+ * SSE con búsqueda de ruta y evento:
+ * - Rutas candidatas: /api/stream, /stream, /api/sse, /events
+ * - Eventos: 'tick' y 'message'
+ * - Auto-reconexión exponencial
+ */
+export function openStream(onMessage, { retryMs = 2000, maxRetryMs = 15000 } = {}) {
+  const PATHS = ["/api/stream", "/stream", "/api/sse", "/events"];
+  const EVENTS = ["tick", "message"];
+  let stopped = false;
+  let es = null;
+  let pathIdx = 0;
+  let backoff = retryMs;
+  let receivedSomething = false;
+
+  const attachListeners = () => {
+    EVENTS.forEach(ev => {
+      es.addEventListener(ev, (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          receivedSomething = true;
+          backoff = retryMs; // en éxito, resetea backoff
+          log(`SSE '${ev}' data via ${PATHS[pathIdx]}`);
+          onMessage?.(payload);
+        } catch (e) {
+          warn("SSE parse err:", e);
+        }
+      });
+    });
+    // Algunos servidores envían sin 'event:' → cae en 'message'
+    es.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        receivedSomething = true;
+        backoff = retryMs;
+        log(`SSE 'message' data (sin event) via ${PATHS[pathIdx]}`);
+        onMessage?.(payload);
+      } catch (e) {
+        warn("SSE parse err (message):", e);
+      }
+    };
+  };
+
+  const tryNextPath = () => {
+    if (stopped) return;
+    if (pathIdx >= PATHS.length) {
+      // reinicia desde el principio con backoff creciente
+      setTimeout(() => {
+        if (!stopped) {
+          pathIdx = 0;
+          backoff = Math.min(backoff * 2, maxRetryMs);
+          tryStart();
+        }
+      }, backoff);
+      return;
+    }
+    tryStart();
+  };
+
+  const tryStart = () => {
+    const path = PATHS[pathIdx];
+    receivedSomething = false;
+    try {
+      log("SSE intentando", path);
+      es = new EventSource(API + path);
+    } catch (e) {
+      warn("EventSource init err:", e);
+      pathIdx++;
+      return tryNextPath();
+    }
+
+    const startTs = Date.now();
+    const watchdog = setTimeout(() => {
+      if (!receivedSomething) {
+        warn("SSE sin datos en", path, "→ probando siguiente");
+        es.close();
+        pathIdx++;
+        tryNextPath();
+      }
+    }, 5000);
+
+    es.onopen = () => {
+      log("SSE abierto en", path, `(lat ${Date.now() - startTs}ms)`);
+    };
+    es.onerror = () => {
+      clearTimeout(watchdog);
+      es?.close?.();
+      if (!stopped) {
+        warn("SSE error en", path, "→ siguiente ruta");
+        pathIdx++;
+        tryNextPath();
+      }
+    };
+
+    attachListeners();
+  };
+
+  tryStart();
+  return () => { stopped = true; try { es?.close?.(); } catch {} };
+}

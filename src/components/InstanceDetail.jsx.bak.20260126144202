@@ -1,0 +1,39 @@
+import React, { useMemo } from "react";
+import HistoryChart from "./HistoryChart.jsx";
+import History from "../historyEngine.js";
+
+export default function InstanceDetail({
+  instanceName,
+  monitorsAll = [],
+  hiddenSet = new Set(),
+  onHide, onUnhide, onHideAll, onUnhideAll
+}) {
+  const group = useMemo(()=>monitorsAll.filter(m=>m.instance===instanceName), [monitorsAll, instanceName]);
+  const series = useMemo(()=>History.getAllForInstance(instanceName), [instanceName, monitorsAll.length]);
+
+  return (
+    <div>
+      <h2>{instanceName}</h2>
+      <HistoryChart series={series} />
+      <div style={{marginTop:12}}>
+        <button className="k-btn k-btn--primary" onClick={()=>window.history.back()}>Volver</button>
+        <button className="k-btn k-btn--danger" onClick={()=>onHideAll?.(instanceName)} style={{marginLeft:8}}>Ocultar sede</button>
+        <button className="k-btn k-btn--ghost"  onClick={()=>onUnhideAll?.(instanceName)} style={{marginLeft:8}}>Mostrar sede</button>
+      </div>
+
+      <div style={{marginTop:16}}>
+        <ul>
+          {group.map((m,i)=>(
+            <li key={i}>
+              {m.info?.monitor_name} — {m.latest?.status===1 ? "UP" : "DOWN"} — {m.latest?.responseTime ?? "—"} ms
+              <button className="k-btn k-btn--ghost" style={{marginLeft:8}}
+                onClick={()=>onHide?.(m.instance, m.info?.monitor_name)}>Ocultar</button>
+              <button className="k-btn k-btn--ghost" style={{marginLeft:6}}
+                onClick={()=>onUnhide?.(m.instance, m.info?.monitor_name)}>Mostrar</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,49 @@
+// Simple history engine (localStorage) – snapshots de monitores
+const KEY = "kuma_history_snapshots_v1";
+const MAX = 500;          // 5s*500 ≈ 41' de historial
+const SPARK_POINTS = 120; // reduce puntos para sparkline (suave)
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); }
+  catch { return []; }
+}
+function save(arr) { try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch {} }
+function now() { return Date.now(); }
+
+function avgLatencyForInstance(monitors, instance) {
+  const arr = monitors.filter(m => m.instance === instance)
+                      .map(m => m.latest?.responseTime)
+                      .filter(v => typeof v === "number" && isFinite(v));
+  if (!arr.length) return null;
+  const sum = arr.reduce((a,b)=>a+b,0);
+  return Math.round(sum / arr.length);
+}
+function downCountForInstance(monitors, instance) {
+  return monitors.filter(m => m.instance === instance && m.latest?.status === 0).length;
+}
+
+const History = {
+  addSnapshot(monitors) {
+    const s = load(); s.push({ t: now(), monitors });
+    while (s.length > MAX) s.shift();
+    save(s);
+  },
+  getAvgSeriesByInstance(instance, maxPoints = SPARK_POINTS) {
+    const s = load(), xs=[], ys=[];
+    for (const snap of s) { xs.push(snap.t); ys.push(avgLatencyForInstance(snap.monitors, instance)); }
+    const start = Math.max(0, xs.length - maxPoints);
+    return { t: xs.slice(start), v: ys.slice(start) };
+  },
+  getDownsSeriesByInstance(instance, maxPoints = SPARK_POINTS) {
+    const s = load(), xs=[], ys=[];
+    for (const snap of s) { xs.push(snap.t); ys.push(downCountForInstance(snap.monitors, instance)); }
+    const start = Math.max(0, xs.length - maxPoints);
+    return { t: xs.slice(start), v: ys.slice(start) };
+  },
+  getAllForInstance(instance, maxPoints = MAX) {
+    const lat = this.getAvgSeriesByInstance(instance, maxPoints);
+    const dwn = this.getDownsSeriesByInstance(instance, maxPoints);
+    return { lat, dwn };
+  }
+};
+export default History;

@@ -1,0 +1,11 @@
+export default function Cards({ summary = {} }) {
+  const k = (cls,label,val)=>(<div className={`kpi ${cls}`}><div className="label">{label}</div><div style={{fontSize:22,fontWeight:600}}>{val ?? 0}</div></div>);
+  return (
+    <div className="kpis">
+      {k("ok","UP",summary.up)}
+      {k("down","DOWN",summary.down)}
+      {k("info","Total",summary.total)}
+      {k("violet","Prom (ms)",summary.avgResponseTimeMs ?? "—")}
+    </div>
+  );
+}

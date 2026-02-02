@@ -1,0 +1,107 @@
+import Mem from './historyMem';
+import DB from './historyDB';
+
+function mkPoint(ts, ms){
+  const sec = (typeof ms === 'number') ? ms/1000 : null;
+  return { ts, x: ts, y: sec, value: sec, sec, ms, avgMs: ms, xy: [ts, sec] };
+}
+
+const History = {
+  addSnapshot(monitors) {
+    try { Mem.addSnapshots?.(monitors); } catch (e) { console.warn('[HIST] mem add err', e); }
+    try { DB.addSnapshots?.(monitors); DB.pruneOlderThanDays?.(7); } catch (e) { /* ignora */ }
+    try { if (typeof window !== 'undefined') window.__histLastAddTs = Date.now(); } catch {}
+  },
+
+  async getSeriesForMonitor(instance, name, sinceMs = 15*60*1000) {
+    try {
+      const mem = Mem.getSeriesForMonitor?.(instance, name, sinceMs) || [];
+      if (mem.length) {
+        const out = mem.map(r => mkPoint(r.ts, r.ms));
+        console.log('[HIST] getSeriesForMonitor(mem)', instance, name, '->', out.length);
+        return out;
+      }
+      const key = `${instance}::${name||''}`;
+      const rows = await (DB.getSeriesFor ? DB.getSeriesFor(key, sinceMs) : Promise.resolve([]));
+      const out = (rows||[]).filter(r => typeof r.responseTime === 'number').map(r => mkPoint(r.ts, r.responseTime));
+      console.log('[HIST] getSeriesForMonitor(db)', instance, name, '->', out.length);
+      return out;
+    } catch (e) {
+      console.error('[HIST] getSeriesForMonitor error', e);
+      return [];
+    }
+  },
+
+  async getAvgSeriesForMonitor(instance, name, sinceMs = 24*3600*1000, bucketMs = 60*1000) {
+    try {
+      const base = await this.getSeriesForMonitor(instance, name, sinceMs);
+      if (!base.length) { console.log('[HIST] getAvgSeriesForMonitor empty'); return []; }
+      const sum = new Map(), count = new Map();
+      for (const s of base) {
+        const ms = (typeof s.ms === 'number') ? s.ms : (s.sec * 1000);
+        const b = Math.floor(s.ts / bucketMs) * bucketMs;
+        sum.set(b, (sum.get(b) || 0) + ms);
+        count.set(b, (count.get(b) || 0) + 1);
+      }
+      const out = [];
+      for (const [b, s] of sum) out.push(mkPoint(b, s / (count.get(b) || 1)));
+      out.sort((a,b)=> a.ts - b.ts);
+      console.log('[HIST] getAvgSeriesForMonitor', instance, name, '->', out.length);
+      return out;
+    } catch (e) {
+      console.error('[HIST] getAvgSeriesForMonitor error', e);
+      return [];
+    }
+  },
+
+  async getAllForInstance(instance, sinceMs = 15*60*1000) {
+    try {
+      const objMem = Mem.getAllForInstance?.(instance, sinceMs);
+      if (objMem && Object.keys(objMem).length) {
+        const ofmt = {};
+        for (const [name, arr] of Object.entries(objMem)) ofmt[name] = arr.map(r => mkPoint(r.ts, r.ms));
+        const total = Object.values(ofmt).reduce((n,a)=>n+a.length,0);
+        console.log('[HIST] getAllForInstance(mem)', instance, 'series:', Object.keys(ofmt).length, 'points:', total);
+        return ofmt;
+      }
+      const objDb = await (DB.getAllForInstance ? DB.getAllForInstance(instance, sinceMs) : Promise.resolve({}));
+      const ofmt = {};
+      for (const [name, arr] of Object.entries(objDb || {})) {
+        ofmt[name] = (arr||[]).filter(r => typeof r.responseTime === 'number').map(r => mkPoint(r.ts, r.responseTime));
+      }
+      const total = Object.values(ofmt).reduce((n,a)=>n+a.length,0);
+      console.log('[HIST] getAllForInstance(db)', instance, 'series:', Object.keys(ofmt).length, 'points:', total);
+      return ofmt;
+    } catch (e) {
+      console.error('[HIST] getAllForInstance error', e);
+      return {};
+    }
+  },
+
+  async getAvgSeriesByInstance(instance, sinceMs = 15*60*1000, bucketMs = 60*1000) {
+    try {
+      const mem = Mem.getAvgSeriesByInstance?.(instance, sinceMs, bucketMs) || [];
+      if (mem.length) {
+        const out = mem.map(p => mkPoint(p.ts, p.avgMs));
+        console.log('[HIST] getAvgSeriesByInstance(mem)', instance, '->', out.length);
+        return out;
+      }
+      const arr = await (DB.getAvgSeriesByInstance ? DB.getAvgSeriesByInstance(instance, sinceMs, bucketMs) : Promise.resolve([]));
+      const out = (arr||[]).map(p => mkPoint(p.ts, p.avgMs));
+      console.log('[HIST] getAvgSeriesByInstance(db)', instance, '->', out.length);
+      return out;
+    } catch (e) {
+      console.error('[HIST] getAvgSeriesByInstance error', e);
+      return [];
+    }
+  },
+
+  debugInfo() {
+    try { return Mem.debugInfo?.(); } catch { return {}; }
+  },
+};
+
+// Exponer para consola
+try { if (typeof window !== 'undefined') window.__hist = History; } catch {}
+
+export default History;

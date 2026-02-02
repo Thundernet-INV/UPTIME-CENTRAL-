@@ -1,0 +1,47 @@
+import React from "react";
+import Sparkline from "./Sparkline.jsx";
+
+export default function ServiceCard({ sede, data, onHideAll, onUnhideAll, onOpen, spark }) {
+  const { up = 0, down = 0, total = 0, avg = null } = data ?? {};
+  const hasIncidents = down > 0;
+
+  function clickCard() {
+    onOpen?.(sede);
+  }
+
+  function stop(e) {
+    e.stopPropagation();
+  }
+
+  return (
+    <div className="k-card k-card--site clickable" onClick={clickCard}>
+      <div className="k-card__head">
+        <h3 className="k-card__title">{sede}</h3>
+        <span className={`k-badge ${hasIncidents ? "k-badge--danger" : "k-badge--ok"}`}>
+          {hasIncidents ? "Incidencias" : "OK"}
+        </span>
+      </div>
+
+      {spark ? (
+        <div style={{ marginBottom: 8 }}>
+          <Sparkline
+            points={spark}
+            color={hasIncidents ? "#ef4444" : "#16a34a"}
+          />
+        </div>
+      ) : null}
+
+      <div className="k-stats">
+        <div><span className="k-label">UP:</span> <span className="k-val">{up}</span></div>
+        <div><span className="k-label">DOWN:</span> <span className="k-val">{down}</span></div>
+        <div><span className="k-label">Total:</span> <span className="k-val">{total}</span></div>
+        <div><span className="k-label">Prom:</span> <span className="k-val">{avg != null ? `${avg} ms` : "—"}</span></div>
+      </div>
+
+      <div className="k-actions" onClick={stop}>
+        <button className="k-btn k-btn--danger" onClick={()=>onHideAll?.(sede)}>Ocultar todos</button>
+        <button className="k-btn k-btn--ghost" onClick={()=>onUnhideAll?.(sede)}>Mostrar todos</button>
+      </div>
+    </div>
+  );
+}

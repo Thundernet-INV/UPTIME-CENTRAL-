@@ -1,0 +1,26 @@
+import DB from './historyDB';
+
+const History = {
+  addSnapshot(monitors) {
+    DB.addSnapshots(monitors).catch(()=>{});
+    DB.pruneOlderThanDays(7).catch(()=>{});
+  },
+
+  // Serie por monitor (ventana en ms)
+  getSeriesFor(instance, name, sinceMs) {
+    const key = `${instance}::${name||''}`;
+    return DB.getSeriesFor(key, sinceMs);
+  },
+
+  // COMPAT: todos los monitores de una instancia (objeto agrupado por nombre)
+  getAllForInstance(instance, sinceMs = 24*3600*1000) {
+    return DB.getAllForInstance(instance, sinceMs);
+  },
+
+  // COMPAT: serie de promedios por instancia (array con {ts, avgMs})
+  getAvgSeriesByInstance(instance, sinceMs = 24*3600*1000, bucketMs = 60*1000) {
+    return DB.getAvgSeriesByInstance(instance, sinceMs, bucketMs);
+  },
+};
+
+export default History;

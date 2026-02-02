@@ -1,0 +1,84 @@
+
+// API BASE
+const API =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) || "/";
+
+const log = (...a) => console.log("[kuma-api]", ...a);
+const warn = (...a) => console.warn("[kuma-api]", ...a);
+const err  = (...a) => console.error("[kuma-api]", ...a);
+
+// -------- FETCH HELPERS --------
+async function get(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+// --------- NUEVA FUNCIÓN PRINCIPAL ---------
+// Lee TODO desde /summary (instances + monitors)
+export async function fetchAll() {
+  try {
+    const data = await get("api/summary");
+
+    log("summary OK", data);
+
+    const instances = data.instances || [];
+    const monitors  = data.monitors  || [];
+
+    return { instances, monitors };
+  } catch (e) {
+    err("Error en fetchAll()", e);
+    return { instances: [], monitors: [] };
+  }
+}
+
+// --------- compatibilidad con UI ---------
+export async function fetchSummary() {
+  const all = await fetchAll();
+  return {
+    up:   all.instances.filter(i => i.ok).length,
+    down: all.instances.filter(i => !i.ok).length,
+    total: all.instances.length,
+  };
+}
+
+export async function fetchMonitors() {
+  const all = await fetchAll();
+  return all.monitors;
+}
+
+// --------- NO USAMOS STREAM ---------
+export function openStream(onMessage) {
+  console.log("[kuma-api] openStream(): NO STREAM EN ESTE BACKEND");
+  // Poll cada 5s
+  let cancelled = false;
+  async function poll() {
+    if (cancelled) return;
+    try {
+      const { monitors } = await fetchAll();
+      onMessage(monitors);
+    } catch {}
+    setTimeout(poll, 5000);
+  }
+  poll();
+  return () => cancelled = true;
+}
+
+// -------- BLOCKLIST opcional --------
+export async function getBlocklist() {
+  try { return await get("api/blocklist"); }
+  catch { return { monitors: [] }; }
+}
+
+export async function saveBlocklist(b) {
+  try {
+    await fetch(API + "api/blocklist", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b),
+    });
+  } catch (e) {
+    localStorage.setItem("blocklist", JSON.stringify(b));
+  }
+}
+

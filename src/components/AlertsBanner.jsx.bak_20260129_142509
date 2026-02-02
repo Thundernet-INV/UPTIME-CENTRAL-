@@ -1,0 +1,23 @@
+import React, { useEffect } from "react";
+export default function AlertsBanner({ alerts, onClose, autoCloseMs = 10000 }) {
+  useEffect(() => {
+    const timers = [];
+    for (const a of alerts) {
+      if (!a.ts) continue;
+      const left = Math.max(0, autoCloseMs - (Date.now() - a.ts));
+      timers.push(setTimeout(() => onClose?.(a.id), left));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [alerts, autoCloseMs, onClose]);
+  if (!alerts?.length) return null;
+  return (
+    <div className="k-alerts">
+      {alerts.map(a => (
+        <div key={a.id} className="k-alert k-alert--danger">
+          <div><strong>DOWN:</strong> {a.instance} — {a.name}</div>
+          <button className="k-alert__close" onClick={()=>onClose?.(a.id)}>✕</button>
+        </div>
+      ))}
+    </div>
+  );
+}
