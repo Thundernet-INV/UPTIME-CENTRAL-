@@ -1,3 +1,0 @@
-== Comparando con dist local ==
-✓ OK      /assets/index-CGDnMdw3.js
-✓ OK      /assets/index-D_aYgIer.css
