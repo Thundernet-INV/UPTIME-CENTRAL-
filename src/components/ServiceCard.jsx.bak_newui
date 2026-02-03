@@ -1,0 +1,30 @@
+import React from 'react';
+
+const statusLabel = {
+  ok: 'Sin problemas',
+  issues: 'Posibles problemas',
+  down: 'Fuera de servicio',
+};
+
+const ServiceCard = ({ service }) => {
+  const { name, status } = service;
+
+  return (
+    <article className={`service-card service-card--${status}`}>
+      <div className="service-card-header">
+        <div className="service-avatar" aria-hidden="true">
+          {name ? name[0] : '?'}
+        </div>
+        <h3 className="service-card-title">{name}</h3>
+      </div>
+
+      <p className="service-card-status">
+        {statusLabel[status] || 'Estado desconocido'}
+      </p>
+
+      <div className="service-card-mini-chart" aria-hidden="true" />
+    </article>
+  );
+};
+
+export default ServiceCard;

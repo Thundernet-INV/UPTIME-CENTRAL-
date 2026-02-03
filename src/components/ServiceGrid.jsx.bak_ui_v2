@@ -1,0 +1,26 @@
+import React from 'react';
+import ServiceCard from './ServiceCard';
+
+const ServiceGrid = ({ monitors = [], services = [] }) => {
+  // Por compatibilidad: si no vienen monitores, usa services
+  const items = monitors.length ? monitors : services;
+
+  return (
+    <div className="service-grid" aria-label="Listado de servicios">
+      {items.map((item, index) => (
+        <ServiceCard
+          // id de monitor, o nombre, o index como último recurso
+          key={
+            item.id ||
+            item.info?.monitor_name ||
+            item.name ||
+            `service-${index}`
+          }
+          service={item}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default ServiceGrid;

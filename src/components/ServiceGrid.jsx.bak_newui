@@ -1,0 +1,21 @@
+import React from 'react';
+import ServiceCard from './ServiceCard';
+
+const MOCK_SERVICES = [
+  { id: 'whatsapp', name: 'WhatsApp', status: 'ok' },
+  { id: 'youtube', name: 'YouTube', status: 'issues' },
+  { id: 'instagram', name: 'Instagram', status: 'ok' },
+  { id: 'facebook', name: 'Facebook', status: 'ok' },
+];
+
+const ServiceGrid = ({ services = MOCK_SERVICES }) => {
+  return (
+    <div className="service-grid" aria-label="Listado de servicios">
+      {services.map((service) => (
+        <ServiceCard key={service.id} service={service} />
+      ))}
+    </div>
+  );
+};
+
+export default ServiceGrid;

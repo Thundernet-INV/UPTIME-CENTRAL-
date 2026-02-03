@@ -9,7 +9,7 @@ const API_BASE =
 // === FIN BLOQUE OPCIÓN A ===
 
 export async function fetchAll() {
-  const url = `${API_BASE}/summary?t=${Date.now()}`;
+  const url = `/api/summary?t=${Date.now()}`;
   const res = await fetch(url, {
     cache: 'no-store',
     headers: {
@@ -23,12 +23,12 @@ export async function fetchAll() {
 
 // (Opcional) blocklist endpoints – también sin caché
 export async function getBlocklist() {
-  const res = await fetch(`${API_BASE}/blocklist?t=${Date.now()}`, { cache:'no-store', headers: {'Cache-Control':'no-store'} });
+  const res = await fetch(`/api/blocklist?t=${Date.now()}`, { cache:'no-store', headers: {'Cache-Control':'no-store'} });
   if (!res.ok) return null;
   return res.json().catch(()=>null);
 }
 export async function saveBlocklist(payload) {
-  const res = await fetch(`${API_BASE}/blocklist`, {
+  const res = await fetch(`/api/blocklist`, {
     method:'POST',
     headers:{'Content-Type':'application/json','Cache-Control':'no-store'},
     body: JSON.stringify(payload)
