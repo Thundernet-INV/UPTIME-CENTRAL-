@@ -1,8 +1,0 @@
-const API=(typeof import.meta!=="undefined"&&import.meta.env?.VITE_API_BASE)||"/";
-async function get(p){const r=await fetch(API+p);if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
-export async function fetchAll(){try{const d=await get("api/summary");return{instances:d.instances||[],monitors:d.monitors||[]}}catch(e){return{instances:[],monitors:[]}}}
-export async function fetchSummary(){const {instances}=await fetchAll();return{up:instances.filter(i=>i.ok).length,down:instances.filter(i=>!i.ok).length,total:instances.length}}
-export async function fetchMonitors(){const {monitors}=await fetchAll();return monitors}
-export function openStream(cb){let s=false;async function L(){if(s)return;try{const {monitors}=await fetchAll();cb?.(monitors)}catch{}setTimeout(L,5000)}L();return()=>{s=true}}
-export async function getBlocklist(){try{return await get("api/blocklist")}catch{const raw=localStorage.getItem("blocklist");return raw?JSON.parse(raw):{monitors:[]}}}
-export async function saveBlocklist(b){try{await fetch(API+"api/blocklist",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)})}catch{localStorage.setItem("blocklist",JSON.stringify(b))}}

@@ -1,3 +1,0 @@
-=== PRUNE REPORT 20260202_170508 ===
-Modo: DELETE  |  dry-run: 1  | keep-scripts: 0
-[0;32mTotal afectados:[0m 0

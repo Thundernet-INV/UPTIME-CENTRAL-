@@ -1,6 +1,0 @@
-=== PRUNE REPORT 20260203_094539 ===
-Modo: ARCHIVE  |  dry-run: 0  | keep-scripts: 0  | sweep-backups: 1
-ARCHIVAR SH: cleanup_vite_port.sh
-ARCHIVAR SH: restore_full_stack_8081.sh
-ARCHIVAR SH: ui-polish-pro.sh
-[0;32mTotal afectados:[0m 3
