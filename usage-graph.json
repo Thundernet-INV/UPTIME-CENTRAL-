@@ -27,20 +27,6 @@
     "src/components/ServiceGrid.jsx",
     "src/utils/notify.js"
   ],
-  "unusedCode": [
-    "src/App.css",
-    "src/chartAdapter.js",
-    "src/components/ChartFallback.jsx",
-    "src/components/DebugChip.jsx",
-    "src/components/OverlayChart.jsx",
-    "src/components/ServiceCard.jsx",
-    "src/components/charts/ResponseTimeMini.jsx",
-    "src/components/charts/UptimeBarMini.jsx",
-    "src/index.css",
-    "src/styles.css"
-  ],
-  "unusedAssets": [
-    "src/assets/react.svg",
-    "public/logos/default.svg"
-  ]
+  "unusedCode": [],
+  "unusedAssets": []
 }
