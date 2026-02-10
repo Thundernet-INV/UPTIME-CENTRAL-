@@ -94,7 +94,8 @@ export default function Dashboard() {
         const { instances, monitors } = await fetchAll();
         setInstances(instances);
         setMonitors(monitors);
-        History.addSnapshot(monitors);
+        console.log('History en Dashboard:', History);
+        History.addSnapshot?.(monitors);
 
         try {
           const bl = await getBlocklist();
