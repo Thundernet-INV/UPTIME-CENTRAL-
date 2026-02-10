@@ -1,6 +1,6 @@
 // Servicio para obtener datos históricos del backend
 // Compatible con la interfaz original de historyEngine.js
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE = 'http://localhost:8080/api';
 export const historyApi = {
   /**
    * Obtener serie de datos para un monitor específico
