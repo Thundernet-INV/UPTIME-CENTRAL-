@@ -18,7 +18,7 @@ const ALERT_AUTOCLOSE_MS = 10000;
 // Variación de latencia por SERVICIO
 const DELTA_ALERT_MS = 100; // umbral (ms)
 const DELTA_COOLDOWN_MS = 60 * 1000; // cooldown por servicio (ms)
-const DELTA_WINDOW = 5; // nº de valores para el promedio (por servicio)
+const DELTA_WINDOW = 20; // nº de valores para el promedio (por servicio)
 
 /**
  * Ruteo por hash: #/sede/<instancia>, #/comparar
@@ -253,7 +253,7 @@ export default function Dashboard() {
         console.error(e);
       }
 
-      setTimeout(loop, 5000);
+      setTimeout(loop, 15000);
     }
 
     loop();

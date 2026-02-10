@@ -1,5 +1,4 @@
 // src/api.js
-
 // === UPTIME-CENTRAL: Configuración de base de API (IP directa LAN) ===
 // Si existe VITE_API_BASE_URL, úsala.
 // Si no, por defecto usamos la IP del backend en la LAN.
@@ -14,11 +13,8 @@ const API_BASE =
 export async function fetchAll() {
   const url = `${API_BASE}/summary?t=${Date.now()}`;
   const res = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-      Pragma: "no-cache",
-    },
+    cache: "no-store"
+    // SIN headers problemáticos de CORS
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -28,8 +24,8 @@ export async function fetchAll() {
 export async function getBlocklist() {
   const url = `${API_BASE}/blocklist?t=${Date.now()}`;
   const res = await fetch(url, {
-    cache: "no-store",
-    headers: { "Cache-Control": "no-store" },
+    cache: "no-store"
+    // SIN headers problemáticos
   });
   if (!res.ok) return null;
   return res.json().catch(() => null);
@@ -41,8 +37,8 @@ export async function saveBlocklist(payload) {
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
+      "Content-Type": "application/json"
+      // SIN Cache-Control problemático
     },
     body: JSON.stringify(payload),
   });

@@ -33,7 +33,7 @@ export default function MonitorsTable({
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setTick(Date.now()), 10000);
+    const t = setInterval(() => setTick(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -43,7 +43,7 @@ export default function MonitorsTable({
       try {
         const pairs = await Promise.all(
           instances.map(async (inst) => {
-            const arr = await History.getAvgSeriesByInstance(inst, 15*60*1000);
+            const arr = await History.getAvgSeriesByInstance(inst, 60*60*1000);
             return [inst, Array.isArray(arr) ? arr : []];
           })
         );

@@ -30,7 +30,7 @@ export default function InstanceDetail({
 
   // Refresco periódico (10s) para ir actualizando history
   useEffect(() => {
-    const t = setInterval(() => setTick(Date.now()), 10000);
+    const t = setInterval(() => setTick(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -41,7 +41,7 @@ export default function InstanceDetail({
       try {
         const obj = await History.getAllForInstance(
           instanceName,
-          15 * 60 * 1000
+          60 * 60 * 1000
         );
         if (!alive) return;
         setSeriesInstance(obj ?? {});
@@ -66,7 +66,7 @@ export default function InstanceDetail({
             const arr = await History.getSeriesForMonitor(
               instanceName,
               name,
-              15 * 60 * 1000
+              60 * 60 * 1000
             );
             return [name, Array.isArray(arr) ? arr : []];
           })

@@ -3,12 +3,30 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    host: '10.10.31.31',
-    port: 5173,
-    strictPort: true,
-    proxy: {
-      '/api': { target: 'http://10.10.31.31:80', changeOrigin: true }
+  build: {
+    // Forzar inclusión de ciertos módulos
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Asegurar que historyEngine.js se incluya
+          if (id.includes('historyEngine')) {
+            return 'history'
+          }
+          if (id.includes('historyApi')) {
+            return 'history'
+          }
+        }
+      }
+    },
+    // Desactivar algunas optimizaciones problemáticas
+    minify: 'terser',
+    terserOptions: {
+      keep_fnames: true,  // Mantener nombres de funciones
+      keep_classnames: true  // Mantener nombres de clases
     }
+  },
+  server: {
+    port: 8081,
+    host: true
   }
 })

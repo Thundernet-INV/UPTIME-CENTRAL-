@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import History from "../historyEngine.js";
 import HistoryChart from "./HistoryChart.jsx";
 
-const RANGE_MS = 15 * 60 * 1000; // rango temporal para pedir histórico
+const RANGE_MS = 60 * 60 * 1000; // rango temporal para pedir histórico
 
 // Color estable a partir del nombre de la sede (para que no se repitan)
 function getColorForInstance(name = "") {
@@ -146,7 +146,7 @@ export default function MultiServiceView({ monitorsAll = [] }) {
   useEffect(() => {
     if (!autoRotate) return;
 
-    const intervalMs = Math.max(2, Number(rotateIntervalSec) || 8) * 1000; // mínimo 2s
+    const intervalMs = Math.max(10, Number(rotateIntervalSec) || 15) * 1000; // mínimo 2s
     const timer = setInterval(() => {
       const list = servicesRef.current;
       if (!list || list.length === 0) return;
