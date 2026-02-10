@@ -1,14 +1,14 @@
 // src/api.js
 
-// === UPTIME-CENTRAL: Configuración de base de API (IP directa LAN) ===
+// === UPTIME-CENTRAL: Configuración de base de API ===
 // Si existe VITE_API_BASE_URL, úsala.
-// Si no, por defecto usamos la IP del backend en la LAN.
+// Si no, usamos "/api" para trabajar con proxy (Vite en dev, Nginx en prod).
 const API_BASE =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_API_BASE_URL)
     ? import.meta.env.VITE_API_BASE_URL
-    : "http://10.10.31.31:8080/api";
+    : "/api";
 
 // --- Summary principal (dashboard) ---
 export async function fetchAll() {
@@ -29,7 +29,9 @@ export async function getBlocklist() {
   const url = `${API_BASE}/blocklist?t=${Date.now()}`;
   const res = await fetch(url, {
     cache: "no-store",
-    headers: { "Cache-Control": "no-store" },
+    headers: {
+      "Cache-Control": "no-store",
+    },
   });
   if (!res.ok) return null;
   return res.json().catch(() => null);

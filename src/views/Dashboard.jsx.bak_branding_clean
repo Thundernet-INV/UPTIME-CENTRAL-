@@ -443,6 +443,20 @@ export default function Dashboard() {
   // ===== Render =====
   return (
     <main>
+
+      {/* ThunderDetector Banner */}
+      <div className="thunder-header">
+        /logo-thunder.png
+        <span className="thunder-title">ThunderDetector</span>
+      </div>
+
+
+      <!-- Banner ThunderDetector -->
+      <div class="thunder-header">
+        /logo-thunder.png
+        <span class="thunder-title">ThunderDetector</span>
+      </div>
+
       {/* HERO principal con barra de búsqueda */}
       <Hero
         onSearch={(q) =>
@@ -472,7 +486,7 @@ export default function Dashboard() {
                   gap: 12,
                 }}
               >
-                <h1 style={{ margin: 0 }}>Thunder Detector</h1>
+                <h1 style={{ margin: 0 }}>ThunderDetector</h1>
 
                 <button
                   className="home-btn"

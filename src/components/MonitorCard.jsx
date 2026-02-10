@@ -10,6 +10,7 @@ export default function MonitorCard({ monitor, onHide, onUnhide, series, onFocus
   const latency = (typeof monitor?.latest?.responseTime === "number") ? `${monitor.latest.responseTime} ms` : "—";
   const href = monitor?.info?.monitor_url || "";
   function stop(e){ e.stopPropagation(); }
+console.log("MonitorCard series", monitor?.info?.monitor_name, series);
   return (
     <div className="svc-card" onClick={()=>onFocus?.(monitor?.info?.monitor_name)}>
       <div className="svc-head">

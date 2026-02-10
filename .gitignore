@@ -79,3 +79,4 @@ _unused/
 tools/
 usage-graph.json
 prune_report_*.txt
+/data/*.db

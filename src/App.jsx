@@ -1,18 +1,8 @@
-import React from 'react';
-import Home from './views/Home';
-import './styles.css';
 
-function App() {
-  return (
-    <div className="app-root">
-      <header className="app-header">
-        <div className="app-header-left">
-          <span className="app-logo-text">Uptime Central</span>
-        </div>
-      </header>
-      <Home />
-    </div>
-  );
+import React from "react";
+import Dashboard from "./views/Dashboard.jsx";
+import "./styles.css";
+
+export default function App() {
+  return <Dashboard />;
 }
-
-export default App;

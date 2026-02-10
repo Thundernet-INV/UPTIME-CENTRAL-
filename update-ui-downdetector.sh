@@ -1,102 +1,73 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
 
-echo "=============================================================="
-echo " UPTIME-CENTRAL — Patch seguro: búsqueda + filtros + playlist"
-echo "=============================================================="
+CSS_FILE="src/styles.css"
+BACKUP_FILE="src/styles.css.bak"
 
-HOME_FILE="src/views/Home.jsx"
-SECTION_FILE="src/components/InstanceSection.jsx"
+echo "➡️ Verificando archivo CSS…"
 
-# -------------------------
-# BACKUPS
-# -------------------------
-backup() {
-  if [ ! -f "$1.bak_safe" ]; then
-    cp "$1" "$1.bak_safe"
-    echo "📄 Backup creado: $1.bak_safe"
-  fi
+# 1. Validar existencia del CSS
+if [ ! -f "$CSS_FILE" ]; then
+  echo "❌ ERROR: No se encontró $CSS_FILE"
+  exit 1
+fi
+
+# 2. Crear backup
+if [ ! -f "$BACKUP_FILE" ]; then
+  echo "📦 Creando backup en $BACKUP_FILE"
+  cp "$CSS_FILE" "$BACKUP_FILE"
+else
+  echo "ℹ️ Ya existe un backup previo, no se sobrescribe."
+fi
+
+echo "🛠 Aplicando fixes para hero-search (borders perfectos)…"
+
+# 3. Añadir overflow:hidden a .hero-search si no existe
+if grep -q "overflow: hidden" "$CSS_FILE"; then
+  echo "ℹ️ 'overflow:hidden' ya existe en .hero-search"
+else
+  echo "🔧 Insertando 'overflow:hidden' en .hero-search"
+  sed -i '/\.hero-search[[:space:]]*{/a\ \ \ overflow: hidden;' "$CSS_FILE"
+fi
+
+# 4. Añadir reglas de SearchBar si faltan
+NEEDED_RULES=$(cat << 'EOF'
+/* --- FIX SEARCHBAR (UPTIME-CENTRAL) --- */
+
+.hero-search-form {
+  display: flex;
+  width: 100%;
 }
 
-backup "$HOME_FILE"
-backup "$SECTION_FILE"
+.hero-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 18px;
+  border-radius: 999px 0 0 999px;
+  font-size: 0.95rem;
+}
 
-# -------------------------
-# INSERTAR ESTADOS (Home.jsx)
-# -------------------------
-echo "➕ Insertando estados de búsqueda, filtros y playlist..."
+.hero-search-button {
+  border: none;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #ff4a4a;
+  color: #fff;
+  cursor: pointer;
+}
 
-# Insertar justo DESPUÉS de los otros useState
-sed -i '/useState(/a\  const [search, setSearch] = useState("");\n  const [typeFilter, setTypeFilter] = useState("all");\n  const [autoPlay, setAutoPlay] = useState(false);\n  const [autoPlayIndex, setAutoPlayIndex] = useState(0);\n' "$HOME_FILE"
+EOF
+)
 
-# -------------------------
-# INSERTAR UI DE FILTROS + SEARCH
-# -------------------------
-echo "➕ Insertando UI de búsqueda y filtros..."
+if grep -q "FIX SEARCHBAR (UPTIME-CENTRAL)" "$CSS_FILE"; then
+  echo "ℹ️ Reglas de SearchBar ya estaban instaladas."
+else
+  echo "🔧 Insertando reglas nuevas del SearchBar…"
+  printf "\n%s\n" "$NEEDED_RULES" >> "$CSS_FILE"
+fi
 
-sed -i '/<section className="home-services-section">/i\
-<div className="filters-toolbar" style={{display:\"flex\",gap:\"12px\",marginBottom:\"14px\",alignItems:\"center\",flexWrap:\"wrap\"}}>\
-  <input\
-    type=\"text\"\
-    placeholder=\"Buscar servicio...\"\
-    value={search}\
-    onChange={(e) => setSearch(e.target.value)}\
-    style={{padding:\"8px 12px\",borderRadius:\"8px\",border:\"1px solid #e5e7eb\",flex:\"1\"}}\
-  />\
-  <select\
-    value={typeFilter}\
-    onChange={(e) => setTypeFilter(e.target.value)}\
-    style={{padding:\"8px 12px\",borderRadius:\"8px\",border:\"1px solid #e5e7eb\"}}\
-  >\
-    <option value=\"all\">Todos los tipos</option>\
-    <option value=\"http\">HTTP</option>\
-    <option value=\"ping\">PING</option>\
-    <option value=\"dns\">DNS</option>\
-    <option value=\"group\">GRUPO</option>\
-  </select>\
-  <label style={{display:\"flex\",alignItems:\"center\",gap:\"6px\",fontSize:\"14px\"}}>\
-    <input type=\"checkbox\" checked={autoPlay} onChange={() => setAutoPlay(!autoPlay)} /> Playlist\
-  </label>\
-</div>\
-' "$HOME_FILE"
-
-# -------------------------
-# AUTOPLAY entre instancias
-# -------------------------
-echo "⏱ Activando autoplay rotativo entre sedes..."
-
-sed -i '/useEffect(() => {/a\
-  if (autoPlay) {\
-    const timer = setInterval(() => {\
-      setAutoPlayIndex((prev) => {\
-        const next = (prev + 1) % instancesWithMonitors.length;\
-        setSelectedInstance(instancesWithMonitors[next].name);\
-        return next;\
-      });\
-    }, 5000);\
-    return () => clearInterval(timer);\
-  }\
-' "$HOME_FILE"
-
-# -------------------------
-# FILTROS APLICADOS EN InstanceSection
-# -------------------------
-echo "🎯 Inyectando filtros en InstanceSection.jsx..."
-
-sed -i '/const { name, monitors = \[] } = instance;/a\
-  const filtered = useMemo(() => {\
-    let list = monitors;\
-    if (search) list = list.filter((m) => (m.info?.monitor_name || \"\").toLowerCase().includes(search.toLowerCase()));\
-    if (typeFilter !== \"all\") list = list.filter((m) => m.info?.monitor_type === typeFilter);\
-    return list;\
-  }, [monitors, search, typeFilter]);\
-' "$SECTION_FILE"
-
-sed -i 's/<ServiceGrid monitors={monitors} \/>/<ServiceGrid monitors={filtered} \/>/' "$SECTION_FILE"
-
-echo ""
-echo "🎉 COMPLETADO SIN ERRORES"
-echo "Ejecuta: npm run dev"
-echo "✔ Búsqueda funcionando"
-echo "✔ Filtro por tipo funcionando"
-echo "✔ Playlist entre sedes funcionando"
+echo "✅ PROCESO COMPLETADO con éxito."
+echo "👉 Si algo se dañó, puedes restaurar así:"
+echo "cp $BACKUP_FILE $CSS_FILE"
