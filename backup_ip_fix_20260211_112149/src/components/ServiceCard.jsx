@@ -38,63 +38,18 @@ function formatResponseTime(value) {
   return `${Math.round(num)} ms`;
 }
 
-// 🟢 FUNCIÓN CORREGIDA: Mostrar IP para monitores PING
-function getDisplayUrl(service) {
-  const url = service.info?.monitor_url;
-  const hostname = service.info?.monitor_hostname;
-  const type = service.info?.monitor_type;
-  
-  // Para monitores PING: mostrar la IP directamente
-  if (type === 'ping' && hostname) {
-    return hostname;
-  }
-  
-  // Para monitores DNS: mostrar el hostname con prefijo
-  if (type === 'dns' && hostname) {
-    return `dns://${hostname}`;
-  }
-  
-  // Para HTTP: mostrar dominio limpio
-  if (url && url !== 'https://' && url !== 'http://') {
-    try {
-      const domain = new URL(url).hostname.replace(/^www\./, '');
-      return domain;
-    } catch (e) {
-      return url;
-    }
-  }
-  
-  // Fallback
-  return hostname || url || '—';
-}
-
-// 🟢 FUNCIÓN CORREGIDA: Logo para monitores PING
 function getLogoUrl(service) {
   const url = service.info?.monitor_url;
-  const hostname = service.info?.monitor_hostname;
-  const type = service.info?.monitor_type;
-  
-  // Para monitores PING: buscar favicon por IP/dominio
-  if (type === 'ping' && hostname) {
-    return `https://www.google.com/s2/favicons?sz=64&domain=${hostname}`;
+  if (!url || url === "https://" || url === "http://") {
+    return null;
   }
-  
-  // Para monitores DNS: usar hostname
-  if (type === 'dns' && hostname) {
-    return `https://www.google.com/s2/favicons?sz=64&domain=${hostname}`;
+  try {
+    const withProtocol = url.startsWith("http") ? url : `https://${url}`;
+    const domain = new URL(withProtocol).hostname;
+    return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+  } catch (e) {
+    return null;
   }
-  
-  // Para HTTP: usar URL
-  if (url && url !== 'https://' && url !== 'http://') {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
-    } catch (e) {
-      return null;
-    }
-  }
-  
-  return null;
 }
 
 /**
@@ -109,7 +64,6 @@ const ServiceCard = ({ service, series = [] }) => {
   const latest = service.latest || {};
 
   const { statusKey, label } = getStatusInfo(service);
-  const displayUrl = getDisplayUrl(service);
   const logoUrl = getLogoUrl(service);
 
   return (
@@ -121,19 +75,12 @@ const ServiceCard = ({ service, series = [] }) => {
             src={logoUrl}
             alt={`Logo de ${monitorName}`}
             className="service-logo"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              const avatar = e.target.parentNode.querySelector('.service-avatar');
-              if (avatar) avatar.style.display = 'flex';
-            }}
           />
-        ) : null}
-        <div 
-          className="service-avatar" 
-          style={{ display: logoUrl ? 'none' : 'flex' }}
-        >
-          {monitorName ? monitorName.charAt(0).toUpperCase() : "?"}
-        </div>
+        ) : (
+          <div className="service-avatar" aria-hidden="true">
+            {monitorName ? monitorName.charAt(0).toUpperCase() : "?"}
+          </div>
+        )}
 
         <div className="service-card-header-text">
           <h3 className="service-card-title" title={monitorName}>
@@ -142,12 +89,6 @@ const ServiceCard = ({ service, series = [] }) => {
           {monitorType && (
             <span className="service-card-type">
               {monitorType.toUpperCase()}
-            </span>
-          )}
-          {/* 🟢 NUEVO: Mostrar IP/Dirección */}
-          {displayUrl && displayUrl !== '—' && (
-            <span className="service-card-url" title={displayUrl}>
-              {displayUrl}
             </span>
           )}
         </div>
@@ -163,8 +104,7 @@ const ServiceCard = ({ service, series = [] }) => {
           {formatResponseTime(latest.responseTime)}
         </span>
       </div>
-      
-      {/* Tendencia (Sparkline) dentro de la card */}
+{/* Tendencia (Sparkline) dentro de la card */}
       <div className="service-card-mini-chart" aria-hidden="true">
         {Array.isArray(series) && series.length > 0 ? (
           <Sparkline
@@ -175,7 +115,7 @@ const ServiceCard = ({ service, series = [] }) => {
           />
         ) : null}
       </div>
-    </article>
+     </article>
   );
 };
 
