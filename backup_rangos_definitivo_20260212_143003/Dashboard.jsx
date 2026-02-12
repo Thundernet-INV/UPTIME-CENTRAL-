@@ -1,3 +1,4 @@
+import SimpleRangeSelector from "../components/SimpleRangeSelector.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import Hero from "../components/Hero.jsx";

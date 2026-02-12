@@ -1,4 +1,4 @@
-// src/components/HistoryChart.jsx - VERSIÓN CON TOOLTIP INDIVIDUAL
+// src/components/HistoryChart.jsx - VERSIÓN ORIGINAL CON TOOLTIP CORRECTO
 import React, { useMemo } from 'react';
 import {
   Chart as ChartJS,
@@ -80,9 +80,8 @@ export default function HistoryChart({
     maintainAspectRatio: false,
     animation: false,
     interaction: {
-      mode: 'nearest', // 🟢 CAMBIADO DE 'index' a 'nearest'
+      mode: 'index',
       intersect: false,
-      axis: 'xy',      // 🟢 AÑADIDO para mejor precisión
     },
     plugins: {
       legend: {
@@ -100,9 +99,8 @@ export default function HistoryChart({
         color: isDark ? '#e5e7eb' : '#1f2937',
       },
       tooltip: {
-        mode: 'nearest',     // 🟢 CAMBIADO DE 'index' a 'nearest'
+        mode: 'index',
         intersect: false,
-        axis: 'xy',          // 🟢 AÑADIDO para mejor precisión
         backgroundColor: isDark ? '#1f2937' : '#ffffff',
         titleColor: isDark ? '#f3f4f6' : '#111827',
         bodyColor: isDark ? '#e5e7eb' : '#4b5563',
@@ -113,28 +111,16 @@ export default function HistoryChart({
         displayColors: true,
         boxPadding: 4,
         callbacks: {
-          title: function(context) {
-            // Mostrar la fecha/hora del punto
-            if (context[0]) {
-              const date = new Date(context[0].parsed.x);
-              return date.toLocaleString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                day: '2-digit',
-                month: '2-digit'
-              });
-            }
-            return '';
-          },
           label: function(context) {
-            // 🟢 MOSTRAR SOLO EL PUNTO ACTUAL - SIN LISTA
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
             }
             if (context.parsed.y !== null) {
-              label += context.parsed.y.toFixed(3) + ' s';
+              label += new Intl.NumberFormat('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }).format(context.parsed.y) + ' s';
             }
             return label;
           }

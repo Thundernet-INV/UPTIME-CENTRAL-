@@ -1,4 +1,4 @@
-// src/components/TimeRangeSelector.jsx - VERSIÓN ULTRA SIMPLE
+// src/components/TimeRangeSelector.jsx - VERSIÓN SIMPLE Y FUNCIONAL
 import React, { useState, useEffect } from 'react';
 
 // Opciones de rango
@@ -11,12 +11,12 @@ const TIME_RANGES = [
   { label: '7 días', value: 7 * 24 * 60 * 60 * 1000 },
 ];
 
-// Variable GLOBAL
+// Variable GLOBAL para almacenar el rango actual
 window.__TIME_RANGE = TIME_RANGES[0];
 
 export default function TimeRangeSelector() {
   const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState(() => {
+  const [selectedRange, setSelectedRange] = useState(() => {
     try {
       const saved = localStorage.getItem('timeRange');
       if (saved) {
@@ -29,11 +29,16 @@ export default function TimeRangeSelector() {
   });
 
   useEffect(() => {
-    localStorage.setItem('timeRange', JSON.stringify(selected));
-    window.__TIME_RANGE = selected;
-    window.dispatchEvent(new Event('time-range-change'));
-    console.log('📊 Rango:', selected.label);
-  }, [selected]);
+    // Guardar en localStorage y variable global
+    localStorage.setItem('timeRange', JSON.stringify(selectedRange));
+    window.__TIME_RANGE = selectedRange;
+    
+    // Disparar evento personalizado
+    const event = new Event('timeRangeChanged');
+    window.dispatchEvent(event);
+    
+    console.log('📊 Rango cambiado a:', selectedRange.label);
+  }, [selectedRange]);
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -53,7 +58,7 @@ export default function TimeRangeSelector() {
         }}
       >
         <span>📊</span>
-        <span>{selected.label}</span>
+        <span>{selectedRange.label}</span>
         <span style={{ fontSize: '0.7rem' }}>▼</span>
       </button>
       
@@ -74,7 +79,7 @@ export default function TimeRangeSelector() {
             <button
               key={idx}
               onClick={() => {
-                setSelected(range);
+                setSelectedRange(range);
                 setIsOpen(false);
               }}
               style={{
@@ -84,8 +89,8 @@ export default function TimeRangeSelector() {
                 textAlign: 'left',
                 border: 'none',
                 borderBottom: idx < TIME_RANGES.length - 1 ? '1px solid #f0f0f0' : 'none',
-                background: selected.value === range.value ? '#3b82f6' : 'transparent',
-                color: selected.value === range.value ? 'white' : '#1f2937',
+                background: selectedRange.value === range.value ? '#3b82f6' : 'transparent',
+                color: selectedRange.value === range.value ? 'white' : '#1f2937',
                 cursor: 'pointer',
               }}
             >
@@ -98,24 +103,27 @@ export default function TimeRangeSelector() {
   );
 }
 
-// Hook SIMPLE - SIN DUPLICADOS
+// Hook SIMPLE para obtener el rango actual
 export function useTimeRange() {
   const [range, setRange] = useState(() => {
     if (window.__TIME_RANGE) return window.__TIME_RANGE;
     try {
       const saved = localStorage.getItem('timeRange');
-      return saved ? JSON.parse(saved) : TIME_RANGES[0];
+      return saved ? JSON.parse(saved) : { label: '1 hora', value: 3600000 };
     } catch {
-      return TIME_RANGES[0];
+      return { label: '1 hora', value: 3600000 };
     }
   });
 
   useEffect(() => {
-    const handler = () => {
-      if (window.__TIME_RANGE) setRange(window.__TIME_RANGE);
+    const handleChange = () => {
+      if (window.__TIME_RANGE) {
+        setRange(window.__TIME_RANGE);
+      }
     };
-    window.addEventListener('time-range-change', handler);
-    return () => window.removeEventListener('time-range-change', handler);
+    
+    window.addEventListener('timeRangeChanged', handleChange);
+    return () => window.removeEventListener('timeRangeChanged', handleChange);
   }, []);
 
   return range;

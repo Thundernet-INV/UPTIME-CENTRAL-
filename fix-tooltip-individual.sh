@@ -1,3 +1,25 @@
+#!/bin/bash
+# fix-tooltip-individual.sh - CORREGIR TOOLTIP PARA MOSTRAR SOLO UN PUNTO
+
+echo "====================================================="
+echo "🔧 CORRIGIENDO TOOLTIP - MODO INDIVIDUAL"
+echo "====================================================="
+
+FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
+BACKUP_DIR="${FRONTEND_DIR}/backup_tooltip_individual_$(date +%Y%m%d_%H%M%S)"
+
+# ========== 1. CREAR BACKUP ==========
+echo ""
+echo "[1] Creando backup..."
+mkdir -p "$BACKUP_DIR"
+cp "${FRONTEND_DIR}/src/components/HistoryChart.jsx" "$BACKUP_DIR/" 2>/dev/null || true
+echo "✅ Backup creado en: $BACKUP_DIR"
+echo ""
+
+# ========== 2. CORREGIR HISTORYCHART.JSX - TOOLTIP INDIVIDUAL ==========
+echo "[2] Corrigiendo HistoryChart.jsx - TOOLTIP MODO NEAREST..."
+
+cat > "${FRONTEND_DIR}/src/components/HistoryChart.jsx" << 'EOF'
 // src/components/HistoryChart.jsx - VERSIÓN CON TOOLTIP INDIVIDUAL
 import React, { useMemo } from 'react';
 import {
@@ -217,3 +239,58 @@ export default function HistoryChart({
     </div>
   );
 }
+EOF
+
+echo "✅ HistoryChart.jsx corregido - TOOLTIP MODO NEAREST"
+echo ""
+
+# ========== 3. LIMPIAR CACHÉ ==========
+echo "[3] Limpiando caché de Vite..."
+
+cd "$FRONTEND_DIR"
+rm -rf node_modules/.vite .vite
+echo "✅ Caché limpiada"
+echo ""
+
+# ========== 4. REINICIAR FRONTEND ==========
+echo "[4] Reiniciando frontend..."
+
+pkill -f "vite" 2>/dev/null || true
+npm run dev &
+sleep 3
+
+# ========== 5. INSTRUCCIONES ==========
+echo ""
+echo "====================================================="
+echo "✅✅ TOOLTIP CORREGIDO - MODO INDIVIDUAL ✅✅"
+echo "====================================================="
+echo ""
+echo "📋 CAMBIOS REALIZADOS:"
+echo ""
+echo "   1. 🎯 interaction.mode: 'index' → 'nearest'"
+echo "   2. 🎯 tooltip.mode: 'index' → 'nearest'"
+echo "   3. 🎯 axis: 'xy' - busca el punto MÁS CERCANO"
+echo "   4. 🎯 callbacks.title: Muestra fecha/hora del punto"
+echo "   5. 🎯 callbacks.label: MUESTRA SOLO 1 LÍNEA"
+echo ""
+echo "🔄 PRUEBA AHORA:"
+echo ""
+echo "   1. Abre http://10.10.31.31:5173"
+echo "   2. Ve a 'Comparar'"
+echo "   3. ✅ Pasa el mouse sobre UNA línea"
+echo "   4. ✅ DEBE mostrar SOLAMENTE esa línea"
+echo "   5. ✅ Formato: 'Caracas: 0.123 s'"
+echo "   6. ✅ NO debe mostrar lista de todas las sedes"
+echo ""
+echo "====================================================="
+
+# Preguntar si quiere abrir el navegador
+read -p "¿Abrir el dashboard ahora? (s/N): " OPEN_BROWSER
+if [[ "$OPEN_BROWSER" =~ ^[Ss]$ ]]; then
+    xdg-open "http://10.10.31.31:5173" 2>/dev/null || \
+    open "http://10.10.31.31:5173" 2>/dev/null || \
+    echo "Abre http://10.10.31.31:5173 en tu navegador"
+fi
+
+echo ""
+echo "✅ Script completado"

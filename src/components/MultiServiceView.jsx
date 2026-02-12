@@ -1,405 +1,224 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import History from "../historyEngine.js";
 import HistoryChart from "./HistoryChart.jsx";
-import { useTimeRange, TIME_RANGE_CHANGE_EVENT } from "./TimeRangeSelector.jsx";
 
-// Color estable a partir del nombre de la sede (MISMO ESTILO ORIGINAL)
-function getColorForInstance(name = "") {
+// Opciones de tiempo
+const TIME_OPTIONS = [
+  { label: '1 hora', hours: 1 },
+  { label: '3 horas', hours: 3 },
+  { label: '6 horas', hours: 6 },
+  { label: '12 horas', hours: 12 },
+  { label: '24 horas', hours: 24 },
+  { label: '7 días', hours: 168 },
+];
+
+function getColor(name) {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
-  const hue = hash % 360;
-  const saturation = 70;
-  const lightness = 50;
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360}, 70%, 50%)`;
 }
 
 export default function MultiServiceView({ monitorsAll = [] }) {
-  // Obtener el rango de tiempo seleccionado
-  const selectedRange = useTimeRange();
-  const [rangeValue, setRangeValue] = useState(selectedRange.value);
-
-  // ESTADO PERSISTENTE - usar ref para evitar re-renders innecesarios
   const [selectedService, setSelectedService] = useState("");
   const [selectedInstances, setSelectedInstances] = useState([]);
-  const [seriesByInstance, setSeriesByInstance] = useState({});
-  const [loading, setLoading] = useState(false);
-  
-  // Flag para controlar si el usuario ha interactuado con las sedes
-  const [userTouched, setUserTouched] = useState(false);
-  const prevServiceRef = useRef("");
+  const [seriesData, setSeriesData] = useState({});
+  const [selectedHours, setSelectedHours] = useState(1);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Escuchar cambios en el rango de tiempo
-  useEffect(() => {
-    const handleRangeChange = (e) => {
-      console.log(`📊 MultiServiceView - Rango cambiado a: ${e.detail.label}`);
-      setRangeValue(e.detail.value);
-    };
-    
-    window.addEventListener(TIME_RANGE_CHANGE_EVENT, handleRangeChange);
-    return () => window.removeEventListener(TIME_RANGE_CHANGE_EVENT, handleRangeChange);
-  }, []);
-
-  // 1) Lista de servicios HTTP únicos - MISMA LÓGICA ORIGINAL
+  // Lista de servicios HTTP
   const services = useMemo(() => {
     const map = new Map();
-    for (const m of monitorsAll) {
-      const typeRaw = m.info?.monitor_type ?? "";
-      if (typeRaw.toLowerCase() !== "http") continue;
-
-      const name = m.info?.monitor_name ?? m.name ?? "";
-      if (!name) continue;
-
-      const type = typeRaw.toLowerCase();
-      if (!map.has(name)) {
-        map.set(name, { name, type, count: 0, instances: new Set() });
-      }
-      map.get(name).count += 1;
-      if (m.instance) {
+    monitorsAll.forEach(m => {
+      if (m.info?.monitor_type?.toLowerCase() !== "http") return;
+      const name = m.info?.monitor_name;
+      if (name && m.instance) {
+        if (!map.has(name)) map.set(name, { name, instances: new Set() });
         map.get(name).instances.add(m.instance);
       }
-    }
-    return Array.from(map.values()).sort((a, b) =>
-      a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-    );
+    });
+    return Array.from(map.values()).map(s => ({
+      ...s,
+      instances: Array.from(s.instances).sort(),
+      count: s.instances.size
+    })).sort((a, b) => a.name.localeCompare(b.name));
   }, [monitorsAll]);
 
-  // 2) Auto-seleccionar primer servicio SOLO si no hay ninguno seleccionado
+  // Auto-seleccionar primer servicio
   useEffect(() => {
     if (services.length > 0 && !selectedService) {
-      const primerServicio = services[0].name;
-      console.log("🎯 Auto-seleccionando primer servicio:", primerServicio);
-      setSelectedService(primerServicio);
+      setSelectedService(services[0].name);
     }
   }, [services, selectedService]);
 
-  // 3) Obtener instancias del servicio seleccionado
+  // Instancias del servicio seleccionado
   const instancesWithService = useMemo(() => {
-    if (!selectedService) return [];
     const service = services.find(s => s.name === selectedService);
-    return service ? Array.from(service.instances).sort() : [];
+    return service?.instances || [];
   }, [services, selectedService]);
 
-  // 4) 🟢 CORREGIDO: SELECCIÓN PERSISTENTE - NO se resetea al actualizar
+  // Seleccionar todas las instancias por defecto
   useEffect(() => {
-    // Solo cuando cambia el servicio Y el usuario NO ha tocado las sedes
-    if (!userTouched && selectedService && instancesWithService.length > 0) {
-      console.log(`🏢 Seleccionando TODAS las sedes para ${selectedService}`);
+    if (instancesWithService.length > 0) {
       setSelectedInstances(instancesWithService);
     }
+  }, [instancesWithService]);
+
+  // Cargar datos
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (!selectedService || selectedInstances.length === 0) return;
+      
+      const data = {};
+      await Promise.all(
+        selectedInstances.map(async (instance) => {
+          const points = await History.getSeriesForMonitor(instance, selectedService, selectedHours);
+          data[instance] = points;
+        })
+      );
+      
+      if (active) setSeriesData(data);
+    };
     
-    // Actualizar ref del servicio anterior
-    prevServiceRef.current = selectedService;
-  }, [selectedService, instancesWithService, userTouched]);
+    load();
+    return () => { active = false; };
+  }, [selectedService, selectedInstances, selectedHours]);
 
-  // 5) 🟢 RESETEAR flag SOLO cuando el usuario CAMBIA ACTIVAMENTE de servicio
-  const handleServiceChange = (e) => {
-    const newService = e.target.value;
-    setSelectedService(newService);
-    setUserTouched(false); // Resetear flag SOLO al cambiar servicio manualmente
-  };
-
-  // 6) 🟢 BOTONES DE SEDES - ESTILO ORIGINAL
   const toggleInstance = (name) => {
-    setUserTouched(true); // Marcar que el usuario ha interactuado
-    setSelectedInstances(prev => 
-      prev.includes(name)
-        ? prev.filter(n => n !== name)
-        : [...prev, name]
+    setSelectedInstances(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
     );
   };
 
-  // 7) Cargar datos cuando cambia el servicio, sedes o rango
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchData = async () => {
-      if (!selectedService || selectedInstances.length === 0) {
-        setSeriesByInstance({});
-        return;
-      }
-      
-      setLoading(true);
-      console.log(`📊 Cargando datos para ${selectedService} - ${selectedInstances.length} sedes (${selectedRange.label})`);
-      
-      try {
-        const seriesData = {};
-        
-        await Promise.all(
-          selectedInstances.map(async (instance) => {
-            const data = await History.getSeriesForMonitor(
-              instance,
-              selectedService,
-              rangeValue
-            );
-            seriesData[instance] = Array.isArray(data) ? data : [];
-          })
-        );
-        
-        if (isMounted) {
-          setSeriesByInstance(seriesData);
-          console.log(`✅ Datos cargados: ${Object.keys(seriesData).length} sedes`);
-        }
-      } catch (error) {
-        console.error("Error cargando datos:", error);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-    
-    fetchData();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedService, selectedInstances, rangeValue, selectedRange.label]);
+  const chartSeries = selectedInstances.map(instance => ({
+    id: instance,
+    label: instance,
+    color: getColor(instance),
+    points: seriesData[instance] || []
+  }));
 
-  // 8) Preparar datos para el chart
-  const chartSeries = useMemo(() => {
-    return selectedInstances.map(instance => ({
-      id: instance,
-      label: instance,
-      color: getColorForInstance(instance),
-      points: seriesByInstance[instance] || []
-    }));
-  }, [selectedInstances, seriesByInstance]);
-
-  const hasService = !!selectedService;
-  const hasSeries = chartSeries.length > 0 && chartSeries.some(s => s.points.length > 0);
-
-  // Detectar modo oscuro
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.body.classList.contains('dark-mode');
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'class') {
-          setIsDark(document.body.classList.contains('dark-mode'));
-        }
-      });
-    });
-    
-    observer.observe(document.body, { attributes: true });
-    return () => observer.disconnect();
-  }, []);
+  const selectedLabel = TIME_OPTIONS.find(o => o.hours === selectedHours)?.label || '1 hora';
 
   return (
-    <div className="multi-view" style={{ 
-      padding: '24px',
-      backgroundColor: isDark ? '#0f1217' : '#ffffff',
-      color: isDark ? '#e5e7eb' : '#1f2937',
-      borderRadius: '12px',
-      transition: 'all 0.3s ease'
-    }}>
-      {/* Header con título y selector de rango - ESTILO ORIGINAL */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
-        <h2 className="multi-view-title" style={{ 
-          margin: 0, 
-          fontSize: '1.5rem', 
-          fontWeight: '600',
-          color: isDark ? '#f1f5f9' : '#111827'
-        }}>
-          Comparar servicio HTTP por sede
-        </h2>
-        <div style={{
-          padding: '6px 14px',
-          backgroundColor: isDark ? '#1a1e24' : '#f3f4f6',
-          border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
-          borderRadius: '20px',
-          fontSize: '0.85rem',
-          color: isDark ? '#94a3b8' : '#6b7280'
-        }}>
-          📊 {selectedRange.label}
+    <div style={{ padding: '24px' }}>
+      {/* HEADER CON SELECTOR DE TIEMPO */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", padding: "0 4px" }}>
+        <h2 style={{ margin: 0 }}>Comparar servicio HTTP por sede</h2>
+        
+        {/* SELECTOR DE TIEMPO DENTRO DEL COMPONENTE */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              background: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              borderRadius: '20px',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+            }}
+          >
+            <span>🕒</span>
+            <span>{selectedLabel}</span>
+            <span>▼</span>
+          </button>
+          
+          {isOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '4px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              zIndex: 9999,
+              minWidth: '120px',
+            }}>
+              {TIME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.hours}
+                  onClick={() => {
+                    setSelectedHours(opt.hours);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '8px 16px',
+                    textAlign: 'left',
+                    border: 'none',
+                    background: selectedHours === opt.hours ? '#3b82f6' : 'transparent',
+                    color: selectedHours === opt.hours ? 'white' : '#1f2937',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* FILTROS - ESTILO ORIGINAL */}
-      <section className="filters-toolbar" aria-label="Filtros de comparación" style={{
-        backgroundColor: isDark ? '#1a1e24' : '#f9fafb',
-        border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
-        borderRadius: '8px',
-        padding: '16px',
-        marginBottom: '16px'
-      }}>
-        {/* Servicio HTTP - SELECTOR ORIGINAL */}
-        <div className="filter-group">
-          <label className="filter-label" htmlFor="service-select" style={{
-            display: 'block',
-            fontSize: '0.8rem',
-            fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: isDark ? '#94a3b8' : '#6b7280',
-            marginBottom: '8px'
-          }}>
-            Servicio HTTP
-          </label>
-          <select
-            id="service-select"
-            className="filter-select"
-            value={selectedService}
-            onChange={handleServiceChange}
-            style={{
-              width: '100%',
-              maxWidth: '400px',
-              padding: '10px 12px',
-              backgroundColor: isDark ? '#0f1217' : '#ffffff',
-              border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
-              borderRadius: '6px',
-              color: isDark ? '#e5e7eb' : '#1f2937',
-              fontSize: '0.95rem',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="">Selecciona un servicio…</option>
-            {services.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.name} {s.type ? `(${s.type.toUpperCase()})` : ""} · {s.count} monitores
-              </option>
+      {/* SELECTOR DE SERVICIO */}
+      <div style={{ marginBottom: '20px' }}>
+        <select
+          value={selectedService}
+          onChange={(e) => setSelectedService(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb',
+            minWidth: '200px',
+          }}
+        >
+          {services.map(s => (
+            <option key={s.name} value={s.name}>
+              {s.name} · {s.count} {s.count === 1 ? 'sede' : 'sedes'}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* BOTONES DE SEDES */}
+      {selectedService && instancesWithService.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {instancesWithService.map(name => (
+              <button
+                key={name}
+                onClick={() => toggleInstance(name)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  border: '1px solid #e5e7eb',
+                  background: selectedInstances.includes(name) ? '#3b82f6' : 'transparent',
+                  color: selectedInstances.includes(name) ? 'white' : '#1f2937',
+                  cursor: 'pointer',
+                }}
+              >
+                {name}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
+      )}
 
-        {/* 🟢 BOTONES DE SEDES - ESTILO ORIGINAL */}
-        {hasService && instancesWithService.length > 0 && (
-          <div className="filter-group" style={{ marginTop: '16px' }}>
-            <span className="filter-label" style={{
-              display: 'block',
-              fontSize: '0.8rem',
-              fontWeight: '600',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: isDark ? '#94a3b8' : '#6b7280',
-              marginBottom: '8px'
-            }}>
-              Sedes
-            </span>
-            <div className="filter-chips" style={{
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap'
-            }}>
-              {instancesWithService.map((name) => {
-                const isActive = selectedInstances.includes(name);
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    className={`k-btn k-btn--small ${isActive ? 'is-active' : ''}`}
-                    onClick={() => toggleInstance(name)}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
-                      background: isActive 
-                        ? (isDark ? '#2563eb' : '#3b82f6')
-                        : 'transparent',
-                      color: isActive 
-                        ? 'white' 
-                        : (isDark ? '#e5e7eb' : '#1f2937'),
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      fontWeight: isActive ? '600' : '400'
-                    }}
-                  >
-                    {name}
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ 
-              marginTop: '8px', 
-              fontSize: '0.75rem', 
-              color: isDark ? '#94a3b8' : '#6b7280'
-            }}>
-              {selectedInstances.length} de {instancesWithService.length} sedes seleccionadas
-            </div>
-          </div>
+      {/* GRÁFICA */}
+      <div style={{ minHeight: '400px' }}>
+        {selectedService && selectedInstances.length > 0 && (
+          <HistoryChart 
+            mode="multi" 
+            seriesMulti={chartSeries} 
+            h={380}
+          />
         )}
-      </section>
-
-      {/* CONTENEDOR DE GRÁFICA - ESTILO ORIGINAL */}
-      <section className="multi-view-chart-section" aria-label="Gráfica comparativa">
-        {!hasService && (
-          <p className="muted" style={{ 
-            textAlign: 'center', 
-            padding: '60px 20px',
-            color: isDark ? '#94a3b8' : '#6b7280'
-          }}>
-            Selecciona un servicio HTTP para ver su comportamiento en todas las sedes.
-          </p>
-        )}
-
-        {hasService && selectedInstances.length === 0 && (
-          <p className="muted" style={{ 
-            textAlign: 'center', 
-            padding: '60px 20px',
-            color: isDark ? '#94a3b8' : '#6b7280'
-          }}>
-            No hay sedes seleccionadas. Haz click en los botones para seleccionar sedes.
-          </p>
-        )}
-
-        {hasService && selectedInstances.length > 0 && !hasSeries && !loading && (
-          <p className="muted" style={{ 
-            textAlign: 'center', 
-            padding: '60px 20px',
-            color: isDark ? '#94a3b8' : '#6b7280'
-          }}>
-            No hay datos históricos disponibles para {selectedRange.label.toLowerCase()}.
-          </p>
-        )}
-
-        {hasService && selectedInstances.length > 0 && hasSeries && !loading && (
-          <div className="multi-view-chart-wrapper" style={{ 
-            position: 'relative',
-            marginTop: '20px'
-          }}>
-            <HistoryChart 
-              mode="multi" 
-              seriesMulti={chartSeries} 
-              h={380}
-            />
-          </div>
-        )}
-
-        {loading && (
-          <div style={{
-            position: 'relative',
-            height: '380px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: isDark ? '#1a1e24' : '#f9fafb',
-            borderRadius: '8px',
-            border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`
-          }}>
-            <span style={{
-              padding: '8px 16px',
-              backgroundColor: isDark ? '#0f1217' : '#ffffff',
-              border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
-              borderRadius: '20px',
-              color: isDark ? '#e5e7eb' : '#1f2937'
-            }}>
-              Cargando datos para {selectedRange.label}...
-            </span>
-          </div>
-        )}
-      </section>
+      </div>
     </div>
   );
 }

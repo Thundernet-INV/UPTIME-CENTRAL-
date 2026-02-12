@@ -6,6 +6,7 @@ import Cards from "../components/Cards.jsx";
 import InstanceDetail from "../components/InstanceDetail.jsx";
 import SLAAlerts from "../components/SLAAlerts.jsx";
 import InstanceCard from "../components/InstanceCard.jsx";
+import TimeRangeSelector from "../components/TimeRangeSelector.jsx";
 import MultiServiceView from "../components/MultiServiceView.jsx";
 
 import { fetchAll, getBlocklist, saveBlocklist } from "../api.js";

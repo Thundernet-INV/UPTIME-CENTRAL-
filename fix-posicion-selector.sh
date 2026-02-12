@@ -1,3 +1,25 @@
+#!/bin/bash
+# fix-posicion-selector.sh - CORREGIR POSICIÓN DEL SELECTOR EN INSTANCEDETAIL
+
+echo "====================================================="
+echo "🔧 CORRIGIENDO POSICIÓN DEL SELECTOR DE TIEMPO"
+echo "====================================================="
+
+FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
+BACKUP_DIR="${FRONTEND_DIR}/backup_posicion_$(date +%Y%m%d_%H%M%S)"
+
+# ========== 1. CREAR BACKUP ==========
+echo ""
+echo "[1] Creando backup..."
+mkdir -p "$BACKUP_DIR"
+cp "${FRONTEND_DIR}/src/components/InstanceDetail.jsx" "$BACKUP_DIR/"
+echo "✅ Backup creado en: $BACKUP_DIR"
+echo ""
+
+# ========== 2. CORREGIR INSTANCEDETAIL.JSX ==========
+echo "[2] Corrigiendo posición del selector en InstanceDetail..."
+
+cat > "${FRONTEND_DIR}/src/components/InstanceDetail.jsx" << 'EOF'
 import React, { useEffect, useState } from "react";
 import HistoryChart from "./HistoryChart.jsx";
 import History from "../historyEngine.js";
@@ -216,3 +238,77 @@ export default function InstanceDetail({
     </div>
   );
 }
+EOF
+
+echo "✅ InstanceDetail.jsx corregido - SELECTOR AHORA A LA DERECHA"
+echo ""
+
+# ========== 3. TAMBIÉN MEJORAR MULTISERVICEVIEW.JSX ==========
+echo "[3] Mejorando posición del selector en MultiServiceView..."
+
+MULTI_FILE="${FRONTEND_DIR}/src/components/MultiServiceView.jsx"
+
+if [ -f "$MULTI_FILE" ]; then
+    cp "$MULTI_FILE" "$BACKUP_DIR/MultiServiceView.jsx.bak"
+    
+    # Mejorar el header con mejor estilo
+    sed -i 's/<div style={{ display: .flex., justifyContent: .space-between., alignItems: .center., marginBottom: .20px. }}>/<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", padding: "0 4px" }}>/g' "$MULTI_FILE"
+    
+    # Mejorar el botón del selector
+    sed -i 's/style={{\n            display: .flex.,\n            alignItems: .center.,\n            gap: .6px.,\n            padding: .6px 14px.,\n            background: .#f3f4f6.,\n            border: .1px solid #e5e7eb.,\n            borderRadius: .20px.,\n            fontSize: .0.85rem.,\n            cursor: .pointer.,\n          }}/style={{\n          display: "flex",\n          alignItems: "center",\n          gap: "8px",\n          padding: "6px 16px",\n          background: "var(--bg-tertiary, #f3f4f6)",\n          border: "1px solid var(--border, #e5e7eb)",\n          borderRadius: "20px",\n          fontSize: "0.85rem",\n          color: "var(--text-primary, #1f2937)",\n          cursor: "pointer",\n          transition: "all 0.2s ease",\n          fontWeight: "500",\n        }}/g' "$MULTI_FILE"
+    
+    echo "✅ MultiServiceView.jsx mejorado"
+fi
+
+# ========== 4. LIMPIAR CACHÉ ==========
+echo "[4] Limpiando caché de Vite..."
+
+cd "$FRONTEND_DIR"
+rm -rf node_modules/.vite .vite
+echo "✅ Caché limpiada"
+echo ""
+
+# ========== 5. REINICIAR FRONTEND ==========
+echo "[5] Reiniciando frontend..."
+
+pkill -f "vite" 2>/dev/null || true
+npm run dev &
+sleep 3
+
+# ========== 6. INSTRUCCIONES ==========
+echo ""
+echo "====================================================="
+echo "✅✅ POSICIÓN DEL SELECTOR CORREGIDA ✅✅"
+echo "====================================================="
+echo ""
+echo "📋 CAMBIOS REALIZADOS:"
+echo ""
+echo "   1. 🏢 InstanceDetail: SELECTOR AHORA A LA DERECHA"
+echo "      • Título a la izquierda, selector a la derecha"
+echo "      • Con etiqueta 'Rango:' antes del selector"
+echo "      • Mismo estilo que el selector de Comparar"
+echo ""
+echo "   2. 📊 MultiServiceView: SELECTOR MEJORADO"
+echo "      • Mejor espaciado y alineación"
+echo "      • Estilo consistente con InstanceDetail"
+echo ""
+echo "🔄 PRUEBA AHORA:"
+echo ""
+echo "   1. Abre http://10.10.31.31:5173"
+echo "   2. ✅ Entra a Caracas o Guanare"
+echo "   3. ✅ SELECTOR 🕒 debe estar en la ESQUINA SUPERIOR DERECHA"
+echo "   4. ✅ Título a la izquierda, selector a la derecha"
+echo "   5. ✅ Funciona igual de bien"
+echo ""
+echo "====================================================="
+
+# Preguntar si quiere abrir el navegador
+read -p "¿Abrir el dashboard ahora? (s/N): " OPEN_BROWSER
+if [[ "$OPEN_BROWSER" =~ ^[Ss]$ ]]; then
+    xdg-open "http://10.10.31.31:5173" 2>/dev/null || \
+    open "http://10.10.31.31:5173" 2>/dev/null || \
+    echo "Abre http://10.10.31.31:5173 en tu navegador"
+fi
+
+echo ""
+echo "✅ Script completado"

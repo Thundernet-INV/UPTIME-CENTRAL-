@@ -1,4 +1,4 @@
-// src/components/HistoryChart.jsx - VERSIÓN CON TOOLTIP INDIVIDUAL
+// src/components/HistoryChart.jsx - VERSIÓN FUNCIONAL
 import React, { useMemo } from 'react';
 import {
   Chart as ChartJS,
@@ -38,6 +38,7 @@ export default function HistoryChart({
   
   const isDark = typeof document !== 'undefined' && document.body.classList.contains('dark-mode');
   
+  // 🟢 MODO MULTI - Para MultiServiceView
   const chartData = useMemo(() => {
     if (mode === 'multi' && seriesMulti && seriesMulti.length > 0) {
       return {
@@ -56,6 +57,7 @@ export default function HistoryChart({
       };
     }
     
+    // 🟢 MODO MONITOR/INSTANCE
     const data = Array.isArray(seriesMon) ? seriesMon : [];
     
     return {
@@ -79,19 +81,12 @@ export default function HistoryChart({
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
-    interaction: {
-      mode: 'nearest', // 🟢 CAMBIADO DE 'index' a 'nearest'
-      intersect: false,
-      axis: 'xy',      // 🟢 AÑADIDO para mejor precisión
-    },
     plugins: {
       legend: {
         display: mode === 'multi',
         position: 'top',
         labels: {
           color: isDark ? '#e5e7eb' : '#1f2937',
-          usePointStyle: true,
-          pointStyle: 'circle',
         }
       },
       title: {
@@ -100,46 +95,9 @@ export default function HistoryChart({
         color: isDark ? '#e5e7eb' : '#1f2937',
       },
       tooltip: {
-        mode: 'nearest',     // 🟢 CAMBIADO DE 'index' a 'nearest'
+        mode: 'index',
         intersect: false,
-        axis: 'xy',          // 🟢 AÑADIDO para mejor precisión
-        backgroundColor: isDark ? '#1f2937' : '#ffffff',
-        titleColor: isDark ? '#f3f4f6' : '#111827',
-        bodyColor: isDark ? '#e5e7eb' : '#4b5563',
-        borderColor: isDark ? '#374151' : '#e5e7eb',
-        borderWidth: 1,
-        padding: 8,
-        cornerRadius: 6,
-        displayColors: true,
-        boxPadding: 4,
-        callbacks: {
-          title: function(context) {
-            // Mostrar la fecha/hora del punto
-            if (context[0]) {
-              const date = new Date(context[0].parsed.x);
-              return date.toLocaleString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                day: '2-digit',
-                month: '2-digit'
-              });
-            }
-            return '';
-          },
-          label: function(context) {
-            // 🟢 MOSTRAR SOLO EL PUNTO ACTUAL - SIN LISTA
-            let label = context.dataset.label || '';
-            if (label) {
-              label += ': ';
-            }
-            if (context.parsed.y !== null) {
-              label += context.parsed.y.toFixed(3) + ' s';
-            }
-            return label;
-          }
-        }
-      }
+      },
     },
     scales: {
       x: {
@@ -147,34 +105,35 @@ export default function HistoryChart({
         time: {
           unit: 'hour',
           displayFormats: { hour: 'HH:mm' },
-          tooltipFormat: 'dd/MM/yyyy HH:mm',
+          tooltipFormat: 'HH:mm',
         },
         adapters: { date: { locale: es } },
         grid: {
-          color: isDark ? '#374151' : '#e5e7eb',
+          color: isDark ? '#2d3238' : '#e5e7eb',
         },
         ticks: {
-          color: isDark ? '#9ca3af' : '#6b7280',
+          color: isDark ? '#94a3b8' : '#6b7280',
         }
       },
       y: {
         beginAtZero: true,
         grid: {
-          color: isDark ? '#374151' : '#e5e7eb',
+          color: isDark ? '#2d3238' : '#e5e7eb',
         },
         ticks: { 
-          color: isDark ? '#9ca3af' : '#6b7280',
-          callback: (value) => `${value.toFixed(2)}s`
+          color: isDark ? '#94a3b8' : '#6b7280',
+          callback: (v) => `${v.toFixed(2)}s`
         },
         title: {
           display: true,
-          text: 'Latencia (segundos)',
-          color: isDark ? '#9ca3af' : '#6b7280',
+          text: 'Latencia (s)',
+          color: isDark ? '#94a3b8' : '#6b7280',
         }
       }
     }
   };
 
+  // Si no hay datos, mostrar mensaje
   if (mode === 'multi' && (!seriesMulti || seriesMulti.length === 0)) {
     return (
       <div style={{ 
@@ -182,11 +141,11 @@ export default function HistoryChart({
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: isDark ? '#1f2937' : '#f9fafb',
+        background: isDark ? '#1a1e24' : '#f9fafb',
         borderRadius: '8px',
-        border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
+        border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`
       }}>
-        <p style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>
           No hay datos para mostrar
         </p>
       </div>
@@ -200,11 +159,11 @@ export default function HistoryChart({
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: isDark ? '#1f2937' : '#f9fafb',
+        background: isDark ? '#1a1e24' : '#f9fafb',
         borderRadius: '8px',
-        border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
+        border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`
       }}>
-        <p style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+        <p style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>
           Cargando datos...
         </p>
       </div>

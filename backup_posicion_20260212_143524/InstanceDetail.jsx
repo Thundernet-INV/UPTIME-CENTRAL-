@@ -1,0 +1,176 @@
+import React, { useEffect, useState } from "react";
+import HistoryChart from "./HistoryChart.jsx";
+import History from "../historyEngine.js";
+import ServiceCard from "./ServiceCard.jsx";
+
+// Opciones de tiempo
+const TIME_OPTIONS = [
+  { label: '1 hora', hours: 1 },
+  { label: '3 horas', hours: 3 },
+  { label: '6 horas', hours: 6 },
+  { label: '12 horas', hours: 12 },
+  { label: '24 horas', hours: 24 },
+  { label: '7 días', hours: 168 },
+];
+
+export default function InstanceDetail({
+  instanceName,
+  monitorsAll = [],
+}) {
+  const [focus, setFocus] = useState(null);
+  const [avgSeries, setAvgSeries] = useState([]);
+  const [seriesMonMap, setSeriesMonMap] = useState(new Map());
+  const [selectedHours, setSelectedHours] = useState(1); // 1 hora por defecto
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Monitores de la sede actual
+  const group = monitorsAll.filter((m) => m.instance === instanceName);
+
+  // Cargar promedio cuando cambia instancia o horas
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const series = await History.getAvgSeriesByInstance(instanceName, selectedHours);
+      if (active) setAvgSeries(series);
+    };
+    load();
+    return () => { active = false; };
+  }, [instanceName, selectedHours]);
+
+  // Cargar monitores
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const entries = await Promise.all(
+        group.map(async (m) => {
+          const name = m.info?.monitor_name ?? "";
+          const series = await History.getSeriesForMonitor(instanceName, name, selectedHours);
+          return [name, series];
+        })
+      );
+      if (active) setSeriesMonMap(new Map(entries));
+    };
+    load();
+    return () => { active = false; };
+  }, [instanceName, group.length, selectedHours]);
+
+  const chartData = focus ? seriesMonMap.get(focus) || [] : avgSeries;
+  const selectedLabel = TIME_OPTIONS.find(o => o.hours === selectedHours)?.label || '1 hora';
+
+  return (
+    <div className="instance-detail-page">
+      <div className="instance-detail-header">
+        <button
+          className="k-btn k-btn--primary instance-detail-back"
+          onClick={() => window.history.back()}
+        >
+          ← Volver
+        </button>
+        <h2 className="instance-detail-title">{instanceName}</h2>
+        
+        {/* SELECTOR DE TIEMPO DENTRO DE LA SEDE */}
+        <div style={{ position: 'relative', marginLeft: '12px' }}>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              background: 'var(--bg-tertiary, #f3f4f6)',
+              border: '1px solid var(--border, #e5e7eb)',
+              borderRadius: '16px',
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+            }}
+          >
+            <span>🕒</span>
+            <span>{selectedLabel}</span>
+            <span>▼</span>
+          </button>
+          
+          {isOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '4px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              zIndex: 9999,
+              minWidth: '120px',
+            }}>
+              {TIME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.hours}
+                  onClick={() => {
+                    setSelectedHours(opt.hours);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '8px 16px',
+                    textAlign: 'left',
+                    border: 'none',
+                    background: selectedHours === opt.hours ? '#3b82f6' : 'transparent',
+                    color: selectedHours === opt.hours ? 'white' : '#1f2937',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="instance-detail-chip-row">
+        {focus ? (
+          <div className="k-chip">
+            Mostrando: <strong>{focus}</strong>
+            <button className="k-btn k-btn--ghost" onClick={() => setFocus(null)}>
+              Ver promedio
+            </button>
+          </div>
+        ) : (
+          <div className="k-chip k-chip--muted">
+            <span>📊 <strong>Promedio de {instanceName}</strong></span>
+          </div>
+        )}
+      </div>
+
+      <section className="instance-detail-grid">
+        <div className="instance-detail-chart">
+          <HistoryChart
+            mode="instance"
+            seriesMon={chartData}
+            title={`${focus || instanceName} - ${selectedLabel}`}
+          />
+
+          <div className="instance-detail-actions">
+            <button className="k-btn k-btn--danger">Ocultar todos</button>
+            <button className="k-btn k-btn--ghost">Mostrar todos</button>
+          </div>
+        </div>
+
+        {group.map((m) => {
+          const name = m.info?.monitor_name ?? "";
+          return (
+            <div
+              key={name}
+              className="instance-detail-service-card"
+              onClick={() => setFocus(name)}
+              style={{ cursor: 'pointer' }}
+            >
+              <ServiceCard service={m} series={seriesMonMap.get(name) || []} />
+            </div>
+          );
+        })}
+      </section>
+    </div>
+  );
+}

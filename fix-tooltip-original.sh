@@ -1,4 +1,26 @@
-// src/components/HistoryChart.jsx - VERSIÓN CON TOOLTIP INDIVIDUAL
+#!/bin/bash
+# fix-tooltip-original.sh - RESTAURAR TOOLTIP ORIGINAL DE LAS GRÁFICAS
+
+echo "====================================================="
+echo "🔧 RESTAURANDO TOOLTIP ORIGINAL DE LAS GRÁFICAS"
+echo "====================================================="
+
+FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
+BACKUP_DIR="${FRONTEND_DIR}/backup_tooltip_$(date +%Y%m%d_%H%M%S)"
+
+# ========== 1. CREAR BACKUP ==========
+echo ""
+echo "[1] Creando backup..."
+mkdir -p "$BACKUP_DIR"
+cp "${FRONTEND_DIR}/src/components/HistoryChart.jsx" "$BACKUP_DIR/" 2>/dev/null || true
+echo "✅ Backup creado en: $BACKUP_DIR"
+echo ""
+
+# ========== 2. RESTAURAR HISTORYCHART.JSX CON TOOLTIP ORIGINAL ==========
+echo "[2] Restaurando HistoryChart.jsx - TOOLTIP ORIGINAL..."
+
+cat > "${FRONTEND_DIR}/src/components/HistoryChart.jsx" << 'EOF'
+// src/components/HistoryChart.jsx - VERSIÓN ORIGINAL CON TOOLTIP CORRECTO
 import React, { useMemo } from 'react';
 import {
   Chart as ChartJS,
@@ -80,9 +102,8 @@ export default function HistoryChart({
     maintainAspectRatio: false,
     animation: false,
     interaction: {
-      mode: 'nearest', // 🟢 CAMBIADO DE 'index' a 'nearest'
+      mode: 'index',
       intersect: false,
-      axis: 'xy',      // 🟢 AÑADIDO para mejor precisión
     },
     plugins: {
       legend: {
@@ -100,9 +121,8 @@ export default function HistoryChart({
         color: isDark ? '#e5e7eb' : '#1f2937',
       },
       tooltip: {
-        mode: 'nearest',     // 🟢 CAMBIADO DE 'index' a 'nearest'
+        mode: 'index',
         intersect: false,
-        axis: 'xy',          // 🟢 AÑADIDO para mejor precisión
         backgroundColor: isDark ? '#1f2937' : '#ffffff',
         titleColor: isDark ? '#f3f4f6' : '#111827',
         bodyColor: isDark ? '#e5e7eb' : '#4b5563',
@@ -113,28 +133,16 @@ export default function HistoryChart({
         displayColors: true,
         boxPadding: 4,
         callbacks: {
-          title: function(context) {
-            // Mostrar la fecha/hora del punto
-            if (context[0]) {
-              const date = new Date(context[0].parsed.x);
-              return date.toLocaleString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                day: '2-digit',
-                month: '2-digit'
-              });
-            }
-            return '';
-          },
           label: function(context) {
-            // 🟢 MOSTRAR SOLO EL PUNTO ACTUAL - SIN LISTA
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
             }
             if (context.parsed.y !== null) {
-              label += context.parsed.y.toFixed(3) + ' s';
+              label += new Intl.NumberFormat('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }).format(context.parsed.y) + ' s';
             }
             return label;
           }
@@ -217,3 +225,64 @@ export default function HistoryChart({
     </div>
   );
 }
+EOF
+
+echo "✅ HistoryChart.jsx restaurado - TOOLTIP ORIGINAL"
+echo ""
+
+# ========== 3. LIMPIAR CACHÉ ==========
+echo "[3] Limpiando caché de Vite..."
+
+cd "$FRONTEND_DIR"
+rm -rf node_modules/.vite .vite
+echo "✅ Caché limpiada"
+echo ""
+
+# ========== 4. REINICIAR FRONTEND ==========
+echo "[4] Reiniciando frontend..."
+
+pkill -f "vite" 2>/dev/null || true
+npm run dev &
+sleep 3
+
+# ========== 5. INSTRUCCIONES ==========
+echo ""
+echo "====================================================="
+echo "✅✅ TOOLTIP ORIGINAL RESTAURADO ✅✅"
+echo "====================================================="
+echo ""
+echo "📋 CAMBIOS REALIZADOS:"
+echo ""
+echo "   1. 🎨 TOOLTIP: AHORA MUESTRA VALORES INDIVIDUALES"
+echo "      • Al pasar el mouse: 'Sede: 0.12 s'"
+echo "      • NO más lista agrupada"
+echo "      • Mismo formato que el original"
+echo ""
+echo "   2. 📊 FORMATO DE NÚMEROS: RESTAURADO"
+echo "      • 2 decimales siempre"
+echo "      • Unidad 's' (segundos)"
+echo ""
+echo "   3. 🎯 INTERACCIÓN: mode: 'index'"
+echo "      • Muestra SOLO el punto donde está el mouse"
+echo "      • NO agrupa todos los puntos"
+echo ""
+echo "🔄 PRUEBA AHORA:"
+echo ""
+echo "   1. Abre http://10.10.31.31:5173"
+echo "   2. Ve a 'Comparar'"
+echo "   3. ✅ Pasa el mouse sobre UNA línea"
+echo "   4. ✅ DEBE mostrar: 'Caracas: 0.12 s'"
+echo "   5. ✅ NO debe mostrar una lista de todas las sedes"
+echo ""
+echo "====================================================="
+
+# Preguntar si quiere abrir el navegador
+read -p "¿Abrir el dashboard ahora? (s/N): " OPEN_BROWSER
+if [[ "$OPEN_BROWSER" =~ ^[Ss]$ ]]; then
+    xdg-open "http://10.10.31.31:5173" 2>/dev/null || \
+    open "http://10.10.31.31:5173" 2>/dev/null || \
+    echo "Abre http://10.10.31.31:5173 en tu navegador"
+fi
+
+echo ""
+echo "✅ Script completado"

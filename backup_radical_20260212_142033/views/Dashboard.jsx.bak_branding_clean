@@ -18,7 +18,7 @@ const ALERT_AUTOCLOSE_MS = 10000;
 // Variación de latencia por SERVICIO
 const DELTA_ALERT_MS = 100; // umbral (ms)
 const DELTA_COOLDOWN_MS = 60 * 1000; // cooldown por servicio (ms)
-const DELTA_WINDOW = 20; // nº de valores para el promedio (por servicio)
+const DELTA_WINDOW = 5; // nº de valores para el promedio (por servicio)
 
 /**
  * Ruteo por hash: #/sede/<instancia>, #/comparar
@@ -94,8 +94,7 @@ export default function Dashboard() {
         const { instances, monitors } = await fetchAll();
         setInstances(instances);
         setMonitors(monitors);
-        console.log('History en Dashboard:', History);
-        History.addSnapshot?.(monitors);
+        History.addSnapshot(monitors);
 
         try {
           const bl = await getBlocklist();
@@ -254,7 +253,7 @@ export default function Dashboard() {
         console.error(e);
       }
 
-      setTimeout(loop, 15000);
+      setTimeout(loop, 5000);
     }
 
     loop();
@@ -444,6 +443,20 @@ export default function Dashboard() {
   // ===== Render =====
   return (
     <main>
+
+      {/* ThunderDetector Banner */}
+      <div className="thunder-header">
+        /logo-thunder.png
+        <span className="thunder-title">ThunderDetector</span>
+      </div>
+
+
+      <!-- Banner ThunderDetector -->
+      <div class="thunder-header">
+        /logo-thunder.png
+        <span class="thunder-title">ThunderDetector</span>
+      </div>
+
       {/* HERO principal con barra de búsqueda */}
       <Hero
         onSearch={(q) =>
@@ -473,7 +486,7 @@ export default function Dashboard() {
                   gap: 12,
                 }}
               >
-                <h1 style={{ margin: 0 }}>Thunder Detector</h1>
+                <h1 style={{ margin: 0 }}>ThunderDetector</h1>
 
                 <button
                   className="home-btn"

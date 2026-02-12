@@ -18,10 +18,10 @@ const ALERT_AUTOCLOSE_MS = 10000;
 // Variación de latencia por SERVICIO
 const DELTA_ALERT_MS = 100; // umbral (ms)
 const DELTA_COOLDOWN_MS = 60 * 1000; // cooldown por servicio (ms)
-const DELTA_WINDOW = 20; // nº de valores para el promedio (por servicio)
+const DELTA_WINDOW = 5; // nº de valores para el promedio (por servicio)
 
 /**
- * Ruteo por hash: #/sede/<instancia>, #/comparar
+ * Ruteo por hash: #/sede/<instancia>
  * vacío -> home
  */
 function getRoute() {
@@ -59,9 +59,6 @@ export default function Dashboard() {
   const [autoPlay, setAutoPlay] = useState(false);
   const [autoPlayIndex, setAutoPlayIndex] = useState(0);
 
-  // Toggle global de popups (notify)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-
   // ===== Estado base =====
   const [monitors, setMonitors] = useState([]);
   const [instances, setInstances] = useState([]);
@@ -94,8 +91,7 @@ export default function Dashboard() {
         const { instances, monitors } = await fetchAll();
         setInstances(instances);
         setMonitors(monitors);
-        console.log('History en Dashboard:', History);
-        History.addSnapshot?.(monitors);
+        History.addSnapshot(monitors);
 
         try {
           const bl = await getBlocklist();
@@ -217,12 +213,10 @@ export default function Dashboard() {
                     },
                   ]);
 
-                  if (notificationsEnabled) {
-                    try {
-                      notify("Alerta de variación", msg);
-                    } catch {
-                      // ignorar errores de notificación
-                    }
+                  try {
+                    notify("Alerta de variación", msg);
+                  } catch {
+                    // ignorar errores de notificación
                   }
 
                   lastDeltaAt.current.set(key, now);
@@ -254,7 +248,7 @@ export default function Dashboard() {
         console.error(e);
       }
 
-      setTimeout(loop, 15000);
+      setTimeout(loop, 5000);
     }
 
     loop();
@@ -262,7 +256,7 @@ export default function Dashboard() {
     return () => {
       stop = true;
     };
-  }, [notificationsEnabled]);
+  }, []);
 
   // ===== Playlist simple entre sedes (tipo Home) =====
   useEffect(() => {
@@ -273,8 +267,7 @@ export default function Dashboard() {
       const next = prev % instances.length;
       const inst = instances[next];
       if (inst?.name) {
-        window.location.hash =
-          "/sede/" + encodeURIComponent(inst.name);
+        window.location.hash = "/sede/" + encodeURIComponent(inst.name);
       }
       return next;
     });
@@ -473,7 +466,7 @@ export default function Dashboard() {
                   gap: 12,
                 }}
               >
-                <h1 style={{ margin: 0 }}>Thunder Detector</h1>
+                <h1 style={{ margin: 0 }}>Uptime Central</h1>
 
                 <button
                   className="home-btn"
@@ -500,7 +493,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Controles: filtro por tipo + notificaciones + autoplay */}
+              {/* Controles: filtro por tipo + autoplay */}
               <div
                 style={{
                   display: "flex",
@@ -544,22 +537,7 @@ export default function Dashboard() {
                   </select>
                 </label>
 
-                {/* Botón Notificaciones ON/OFF */}
-                <button
-                  type="button"
-                  className={
-                    "k-btn k-btn--ghost" +
-                    (notificationsEnabled ? " is-active" : "")
-                  }
-                  onClick={() =>
-                    setNotificationsEnabled((prev) => !prev)
-                  }
-                  style={{ fontSize: "0.8rem" }}
-                >
-                  Notificaciones: {notificationsEnabled ? "ON" : "OFF"}
-                </button>
-
-                {/* Toggle autoplay entre sedes (Home/Instancias) */}
+                {/* Toggle autoplay */}
                 <label
                   style={{
                     display: "flex",
