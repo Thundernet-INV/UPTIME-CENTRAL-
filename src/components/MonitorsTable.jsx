@@ -43,7 +43,7 @@ export default function MonitorsTable({
       try {
         const pairs = await Promise.all(
           instances.map(async (inst) => {
-            const arr = await History.getAvgSeriesByInstance(inst, 60*60*1000);
+            const arr = await History.getAvgSeriesByInstance(inst, rangeMs);
             return [inst, Array.isArray(arr) ? arr : []];
           })
         );

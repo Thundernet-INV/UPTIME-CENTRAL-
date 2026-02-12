@@ -1,310 +1,402 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import History from "../historyEngine.js";
 import HistoryChart from "./HistoryChart.jsx";
+import { useTimeRange, TIME_RANGE_CHANGE_EVENT } from "./TimeRangeSelector.jsx";
 
-const RANGE_MS = 60 * 60 * 1000; // rango temporal para pedir histórico
-
-// Color estable a partir del nombre de la sede (para que no se repitan)
+// Color estable a partir del nombre de la sede (MISMO ESTILO ORIGINAL)
 function getColorForInstance(name = "") {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   }
-  const hue = hash % 360; // 0–359
+  const hue = hash % 360;
   const saturation = 70;
   const lightness = 50;
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
 export default function MultiServiceView({ monitorsAll = [] }) {
-  // 1) Lista de servicios HTTP únicos (case-insensitive)
+  // Obtener el rango de tiempo seleccionado
+  const selectedRange = useTimeRange();
+  const [rangeValue, setRangeValue] = useState(selectedRange.value);
+
+  // ESTADO PERSISTENTE - usar ref para evitar re-renders innecesarios
+  const [selectedService, setSelectedService] = useState("");
+  const [selectedInstances, setSelectedInstances] = useState([]);
+  const [seriesByInstance, setSeriesByInstance] = useState({});
+  const [loading, setLoading] = useState(false);
+  
+  // Flag para controlar si el usuario ha interactuado con las sedes
+  const [userTouched, setUserTouched] = useState(false);
+  const prevServiceRef = useRef("");
+
+  // Escuchar cambios en el rango de tiempo
+  useEffect(() => {
+    const handleRangeChange = (e) => {
+      console.log(`📊 MultiServiceView - Rango cambiado a: ${e.detail.label}`);
+      setRangeValue(e.detail.value);
+    };
+    
+    window.addEventListener(TIME_RANGE_CHANGE_EVENT, handleRangeChange);
+    return () => window.removeEventListener(TIME_RANGE_CHANGE_EVENT, handleRangeChange);
+  }, []);
+
+  // 1) Lista de servicios HTTP únicos - MISMA LÓGICA ORIGINAL
   const services = useMemo(() => {
     const map = new Map();
     for (const m of monitorsAll) {
       const typeRaw = m.info?.monitor_type ?? "";
-      if (typeRaw.toLowerCase() !== "http") continue; // SOLO HTTP
+      if (typeRaw.toLowerCase() !== "http") continue;
 
       const name = m.info?.monitor_name ?? m.name ?? "";
       if (!name) continue;
 
       const type = typeRaw.toLowerCase();
       if (!map.has(name)) {
-        map.set(name, { name, type, count: 0 });
+        map.set(name, { name, type, count: 0, instances: new Set() });
       }
       map.get(name).count += 1;
+      if (m.instance) {
+        map.get(name).instances.add(m.instance);
+      }
     }
     return Array.from(map.values()).sort((a, b) =>
       a.name.localeCompare(b.name, "es", { sensitivity: "base" })
     );
   }, [monitorsAll]);
 
-  const [selectedService, setSelectedService] = useState("");
-  const [selectedInstances, setSelectedInstances] = useState([]);
-  const [seriesByInstance, setSeriesByInstance] = useState(new Map());
-  const [loading, setLoading] = useState(false);
-  const [autoRotate, setAutoRotate] = useState(false);
-  const [rotateIntervalSec, setRotateIntervalSec] = useState(8); // segundos entre servicios
-
-  // Flag: el usuario ya tocó la selección de sedes?
-  const [userTouchedInstances, setUserTouchedInstances] = useState(false);
-
-  // Ref estable con la lista de servicios (para autoplay sin reinicios)
-  const servicesRef = useRef([]);
+  // 2) Auto-seleccionar primer servicio SOLO si no hay ninguno seleccionado
   useEffect(() => {
-    servicesRef.current = services;
-  }, [services]);
-
-  // 2) Sedes que tienen ese servicio HTTP
-  const instancesWithService = useMemo(() => {
-    if (!selectedService) return [];
-    const set = new Set();
-    for (const m of monitorsAll) {
-      const typeRaw = m.info?.monitor_type ?? "";
-      if (typeRaw.toLowerCase() !== "http") continue;
-
-      const name = m.info?.monitor_name ?? m.name ?? "";
-      if (name === selectedService && m.instance) {
-        set.add(m.instance);
-      }
-    }
-    return Array.from(set).sort();
-  }, [monitorsAll, selectedService]);
-
-  // 3) Elegir un servicio inicial automáticamente si no hay ninguno
-  useEffect(() => {
-    if (!selectedService && services.length > 0) {
-      setSelectedService(services[0].name);
+    if (services.length > 0 && !selectedService) {
+      const primerServicio = services[0].name;
+      console.log("🎯 Auto-seleccionando primer servicio:", primerServicio);
+      setSelectedService(primerServicio);
     }
   }, [services, selectedService]);
 
-  // 4) Resetear el flag cuando se cambia de servicio
+  // 3) Obtener instancias del servicio seleccionado
+  const instancesWithService = useMemo(() => {
+    if (!selectedService) return [];
+    const service = services.find(s => s.name === selectedService);
+    return service ? Array.from(service.instances).sort() : [];
+  }, [services, selectedService]);
+
+  // 4) 🟢 CORREGIDO: SELECCIÓN PERSISTENTE - NO se resetea al actualizar
   useEffect(() => {
-    setUserTouchedInstances(false);
-  }, [selectedService]);
+    // Solo cuando cambia el servicio Y el usuario NO ha tocado las sedes
+    if (!userTouched && selectedService && instancesWithService.length > 0) {
+      console.log(`🏢 Seleccionando TODAS las sedes para ${selectedService}`);
+      setSelectedInstances(instancesWithService);
+    }
+    
+    // Actualizar ref del servicio anterior
+    prevServiceRef.current = selectedService;
+  }, [selectedService, instancesWithService, userTouched]);
 
-  // 5) Sincronizar sedes seleccionadas
-  useEffect(() => {
-    if (!instancesWithService || instancesWithService.length === 0) return;
+  // 5) 🟢 RESETEAR flag SOLO cuando el usuario CAMBIA ACTIVAMENTE de servicio
+  const handleServiceChange = (e) => {
+    const newService = e.target.value;
+    setSelectedService(newService);
+    setUserTouched(false); // Resetear flag SOLO al cambiar servicio manualmente
+  };
 
-    setSelectedInstances((prev) => {
-      if (!userTouchedInstances) {
-        // Sin interacción del usuario: seleccionamos todas las sedes disponibles
-        return instancesWithService;
-      }
-
-      // Usuario ya eligió: mantener solo las sedes que siguen existiendo
-      const intersection = prev.filter((name) =>
-        instancesWithService.includes(name)
-      );
-      return intersection.length > 0 ? intersection : prev;
-    });
-  }, [instancesWithService, userTouchedInstances]);
-
+  // 6) 🟢 BOTONES DE SEDES - ESTILO ORIGINAL
   const toggleInstance = (name) => {
-    setUserTouchedInstances(true);
-    setSelectedInstances((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    setUserTouched(true); // Marcar que el usuario ha interactuado
+    setSelectedInstances(prev => 
+      prev.includes(name)
+        ? prev.filter(n => n !== name)
+        : [...prev, name]
     );
   };
 
-  // 6) Cargar series (historial) solo cuando cambia servicio o sedes seleccionadas
+  // 7) Cargar datos cuando cambia el servicio, sedes o rango
   useEffect(() => {
-    let alive = true;
-
-    const fetchAll = async () => {
+    let isMounted = true;
+    
+    const fetchData = async () => {
       if (!selectedService || selectedInstances.length === 0) {
-        setSeriesByInstance(new Map());
-        setLoading(false);
+        setSeriesByInstance({});
         return;
       }
-
+      
       setLoading(true);
+      console.log(`📊 Cargando datos para ${selectedService} - ${selectedInstances.length} sedes (${selectedRange.label})`);
+      
       try {
-        const entries = await Promise.all(
-          selectedInstances.map(async (instanceName) => {
-            const arr = await History.getSeriesForMonitor(
-              instanceName,
+        const seriesData = {};
+        
+        await Promise.all(
+          selectedInstances.map(async (instance) => {
+            const data = await History.getSeriesForMonitor(
+              instance,
               selectedService,
-              RANGE_MS
+              rangeValue
             );
-            return [instanceName, Array.isArray(arr) ? arr : []];
+            seriesData[instance] = Array.isArray(data) ? data : [];
           })
         );
-        if (alive) setSeriesByInstance(new Map(entries));
+        
+        if (isMounted) {
+          setSeriesByInstance(seriesData);
+          console.log(`✅ Datos cargados: ${Object.keys(seriesData).length} sedes`);
+        }
+      } catch (error) {
+        console.error("Error cargando datos:", error);
       } finally {
-        if (alive) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
-
-    fetchAll();
+    
+    fetchData();
+    
     return () => {
-      alive = false;
+      isMounted = false;
     };
-  }, [selectedService, selectedInstances]);
+  }, [selectedService, selectedInstances, rangeValue, selectedRange.label]);
 
-  // 7) Auto-rotate: ir cambiando de servicio (WhatsApp -> Facebook -> Apple...)
-  useEffect(() => {
-    if (!autoRotate) return;
-
-    const intervalMs = Math.max(10, Number(rotateIntervalSec) || 15) * 1000; // mínimo 2s
-    const timer = setInterval(() => {
-      const list = servicesRef.current;
-      if (!list || list.length === 0) return;
-
-      setSelectedService((prev) => {
-        if (!prev) return list[0].name;
-        const idx = list.findIndex((s) => s.name === prev);
-        const nextIdx = idx === -1 ? 0 : (idx + 1) % list.length;
-        return list[nextIdx].name;
-      });
-    }, intervalMs);
-
-    return () => clearInterval(timer);
-  }, [autoRotate, rotateIntervalSec]);
-
-  // 8) Adaptar datos para HistoryChart (modo multi)
+  // 8) Preparar datos para el chart
   const chartSeries = useMemo(() => {
-    return selectedInstances.map((instanceName) => {
-      const points = seriesByInstance.get(instanceName) ?? [];
-      return {
-        id: instanceName,
-        label: instanceName, // nombre de la sede
-        color: getColorForInstance(instanceName), // color único por sede
-        points,
-      };
-    });
+    return selectedInstances.map(instance => ({
+      id: instance,
+      label: instance,
+      color: getColorForInstance(instance),
+      points: seriesByInstance[instance] || []
+    }));
   }, [selectedInstances, seriesByInstance]);
 
-  // Banderas auxiliares para la vista
   const hasService = !!selectedService;
-  const hasSeries = chartSeries.length > 0;
+  const hasSeries = chartSeries.length > 0 && chartSeries.some(s => s.points.length > 0);
+
+  // Detectar modo oscuro
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.body.classList.contains('dark-mode');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          setIsDark(document.body.classList.contains('dark-mode'));
+        }
+      });
+    });
+    
+    observer.observe(document.body, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="multi-view">
-      <h2 className="multi-view-title">Comparar servicio HTTP por sede</h2>
+    <div className="multi-view" style={{ 
+      padding: '24px',
+      backgroundColor: isDark ? '#0f1217' : '#ffffff',
+      color: isDark ? '#e5e7eb' : '#1f2937',
+      borderRadius: '12px',
+      transition: 'all 0.3s ease'
+    }}>
+      {/* Header con título y selector de rango - ESTILO ORIGINAL */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
+        <h2 className="multi-view-title" style={{ 
+          margin: 0, 
+          fontSize: '1.5rem', 
+          fontWeight: '600',
+          color: isDark ? '#f1f5f9' : '#111827'
+        }}>
+          Comparar servicio HTTP por sede
+        </h2>
+        <div style={{
+          padding: '6px 14px',
+          backgroundColor: isDark ? '#1a1e24' : '#f3f4f6',
+          border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
+          borderRadius: '20px',
+          fontSize: '0.85rem',
+          color: isDark ? '#94a3b8' : '#6b7280'
+        }}>
+          📊 {selectedRange.label}
+        </div>
+      </div>
 
-      <section
-        className="filters-toolbar"
-        aria-label="Filtros de comparación"
-      >
-        {/* Servicio HTTP */}
+      {/* FILTROS - ESTILO ORIGINAL */}
+      <section className="filters-toolbar" aria-label="Filtros de comparación" style={{
+        backgroundColor: isDark ? '#1a1e24' : '#f9fafb',
+        border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
+        borderRadius: '8px',
+        padding: '16px',
+        marginBottom: '16px'
+      }}>
+        {/* Servicio HTTP - SELECTOR ORIGINAL */}
         <div className="filter-group">
-          <label className="filter-label" htmlFor="service-select">
+          <label className="filter-label" htmlFor="service-select" style={{
+            display: 'block',
+            fontSize: '0.8rem',
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: isDark ? '#94a3b8' : '#6b7280',
+            marginBottom: '8px'
+          }}>
             Servicio HTTP
           </label>
           <select
             id="service-select"
             className="filter-select"
             value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
+            onChange={handleServiceChange}
+            style={{
+              width: '100%',
+              maxWidth: '400px',
+              padding: '10px 12px',
+              backgroundColor: isDark ? '#0f1217' : '#ffffff',
+              border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
+              borderRadius: '6px',
+              color: isDark ? '#e5e7eb' : '#1f2937',
+              fontSize: '0.95rem',
+              cursor: 'pointer'
+            }}
           >
             <option value="">Selecciona un servicio…</option>
             {services.map((s) => (
               <option key={s.name} value={s.name}>
-                {s.name}{" "}
-                {s.type ? `(${s.type.toUpperCase()})` : ""} · {s.count} monitores
+                {s.name} {s.type ? `(${s.type.toUpperCase()})` : ""} · {s.count} monitores
               </option>
             ))}
           </select>
         </div>
 
-        {/* Sedes */}
-        {hasService && (
-          <div className="filter-group">
-            <span className="filter-label">Sedes</span>
-            <div className="filter-chips">
+        {/* 🟢 BOTONES DE SEDES - ESTILO ORIGINAL */}
+        {hasService && instancesWithService.length > 0 && (
+          <div className="filter-group" style={{ marginTop: '16px' }}>
+            <span className="filter-label" style={{
+              display: 'block',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: isDark ? '#94a3b8' : '#6b7280',
+              marginBottom: '8px'
+            }}>
+              Sedes
+            </span>
+            <div className="filter-chips" style={{
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap'
+            }}>
               {instancesWithService.map((name) => {
                 const isActive = selectedInstances.includes(name);
                 return (
                   <button
                     key={name}
                     type="button"
-                    className={
-                      "k-btn k-btn--ghost" + (isActive ? " is-active" : "")
-                    }
+                    className={`k-btn k-btn--small ${isActive ? 'is-active' : ''}`}
                     onClick={() => toggleInstance(name)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
+                      background: isActive 
+                        ? (isDark ? '#2563eb' : '#3b82f6')
+                        : 'transparent',
+                      color: isActive 
+                        ? 'white' 
+                        : (isDark ? '#e5e7eb' : '#1f2937'),
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      fontWeight: isActive ? '600' : '400'
+                    }}
                   >
                     {name}
                   </button>
                 );
               })}
             </div>
+            <div style={{ 
+              marginTop: '8px', 
+              fontSize: '0.75rem', 
+              color: isDark ? '#94a3b8' : '#6b7280'
+            }}>
+              {selectedInstances.length} de {instancesWithService.length} sedes seleccionadas
+            </div>
           </div>
         )}
-
-        {/* Opciones de auto-rotación */}
-        <div className="filter-group">
-          <span className="filter-label">Opciones</span>
-          <div
-            className="filter-chips"
-            style={{ alignItems: "center" }}
-          >
-            <button
-              type="button"
-              className={
-                "k-btn k-btn--ghost" + (autoRotate ? " is-active" : "")
-              }
-              onClick={() => setAutoRotate((prev) => !prev)}
-            >
-              Auto: {autoRotate ? "ON" : "OFF"}
-            </button>
-            <span style={{ fontSize: "0.8rem", color: "#4b5563" }}>
-              Cada
-            </span>
-            <input
-              type="number"
-              min={2}
-              max={600}
-              value={rotateIntervalSec}
-              onChange={(e) => setRotateIntervalSec(e.target.value)}
-              style={{
-                width: 60,
-                padding: "4px 6px",
-                fontSize: "0.8rem",
-                borderRadius: 6,
-                border: "1px solid #e5e7eb",
-                textAlign: "right",
-              }}
-            />
-            <span style={{ fontSize: "0.8rem", color: "#4b5563" }}>seg</span>
-          </div>
-        </div>
       </section>
 
-      <section
-        className="multi-view-chart-section"
-        aria-label="Gráfica comparativa de servicio HTTP por sede"
-      >
-        {/* Mensaje inicial si no hay servicio */}
+      {/* CONTENEDOR DE GRÁFICA - ESTILO ORIGINAL */}
+      <section className="multi-view-chart-section" aria-label="Gráfica comparativa">
         {!hasService && (
-          <p className="muted">
-            Selecciona un servicio HTTP para ver su comportamiento en todas las
-            sedes.
+          <p className="muted" style={{ 
+            textAlign: 'center', 
+            padding: '60px 20px',
+            color: isDark ? '#94a3b8' : '#6b7280'
+          }}>
+            Selecciona un servicio HTTP para ver su comportamiento en todas las sedes.
           </p>
         )}
 
-        {/* Sin datos para ese servicio */}
-        {hasService && !hasSeries && !loading && (
-          <p className="muted">
-            No hay sedes seleccionadas o no se encontró historial para este
-            servicio.
+        {hasService && selectedInstances.length === 0 && (
+          <p className="muted" style={{ 
+            textAlign: 'center', 
+            padding: '60px 20px',
+            color: isDark ? '#94a3b8' : '#6b7280'
+          }}>
+            No hay sedes seleccionadas. Haz click en los botones para seleccionar sedes.
           </p>
         )}
 
-        {/* Cargando por primera vez (sin datos previos) */}
-        {hasService && !hasSeries && loading && (
-          <p className="muted">Cargando series…</p>
+        {hasService && selectedInstances.length > 0 && !hasSeries && !loading && (
+          <p className="muted" style={{ 
+            textAlign: 'center', 
+            padding: '60px 20px',
+            color: isDark ? '#94a3b8' : '#6b7280'
+          }}>
+            No hay datos históricos disponibles para {selectedRange.label.toLowerCase()}.
+          </p>
         )}
 
-        {/* Gráfica: siempre la mantenemos montada; solo añadimos overlay mientras carga */}
-        {hasService && hasSeries && (
-          <div className="multi-view-chart-wrapper">
-            <HistoryChart mode="multi" seriesMulti={chartSeries} h={380} />
-            {loading && (
-              <div className="multi-view-chart-overlay">
-                Actualizando datos…
-              </div>
-            )}
+        {hasService && selectedInstances.length > 0 && hasSeries && !loading && (
+          <div className="multi-view-chart-wrapper" style={{ 
+            position: 'relative',
+            marginTop: '20px'
+          }}>
+            <HistoryChart 
+              mode="multi" 
+              seriesMulti={chartSeries} 
+              h={380}
+            />
+          </div>
+        )}
+
+        {loading && (
+          <div style={{
+            position: 'relative',
+            height: '380px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isDark ? '#1a1e24' : '#f9fafb',
+            borderRadius: '8px',
+            border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`
+          }}>
+            <span style={{
+              padding: '8px 16px',
+              backgroundColor: isDark ? '#0f1217' : '#ffffff',
+              border: `1px solid ${isDark ? '#2d3238' : '#e5e7eb'}`,
+              borderRadius: '20px',
+              color: isDark ? '#e5e7eb' : '#1f2937'
+            }}>
+              Cargando datos para {selectedRange.label}...
+            </span>
           </div>
         )}
       </section>

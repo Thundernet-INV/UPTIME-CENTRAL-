@@ -1,46 +1,51 @@
-// src/api.js
-// === UPTIME-CENTRAL: Configuración de base de API (IP directa LAN) ===
-// Si existe VITE_API_BASE_URL, úsala.
-// Si no, por defecto usamos la IP del backend en la LAN.
-const API_BASE =
-  (typeof import.meta !== "undefined" &&
-    import.meta.env &&
-    import.meta.env.VITE_API_BASE_URL)
-    ? import.meta.env.VITE_API_BASE_URL
-    : "http://10.10.31.31:8080/api";
+// src/api.js - VERSIÓN CORREGIDA
+const API_BASE = 'http://10.10.31.31:8080/api';
 
-// --- Summary principal (dashboard) ---
 export async function fetchAll() {
-  const url = `${API_BASE}/summary?t=${Date.now()}`;
-  const res = await fetch(url, {
-    cache: "no-store"
-    // SIN headers problemáticos de CORS
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  try {
+    const url = `${API_BASE}/summary?t=${Date.now()}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (error) {
+    console.error('[API] Error en fetchAll:', error);
+    return { instances: [], monitors: [] };
+  }
 }
 
-// --- Blocklist: obtener ---
 export async function getBlocklist() {
-  const url = `${API_BASE}/blocklist?t=${Date.now()}`;
-  const res = await fetch(url, {
-    cache: "no-store"
-    // SIN headers problemáticos
-  });
-  if (!res.ok) return null;
-  return res.json().catch(() => null);
+  try {
+    const url = `${API_BASE}/blocklist?t=${Date.now()}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      if (res.status === 404) {
+        console.log('[API] Blocklist no implementada (404) - usando array vacío');
+        return { monitors: [] };
+      }
+      return null;
+    }
+    return await res.json().catch(() => ({ monitors: [] }));
+  } catch (error) {
+    console.error('[API] Error en getBlocklist:', error);
+    return { monitors: [] };
+  }
 }
 
-// --- Blocklist: guardar ---
 export async function saveBlocklist(payload) {
-  const url = `${API_BASE}/blocklist`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-      // SIN Cache-Control problemático
-    },
-    body: JSON.stringify(payload),
-  });
-  return res.json().catch(() => null);
+  try {
+    const url = `${API_BASE}/blocklist`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok && res.status === 404) {
+      console.log('[API] Blocklist no implementada (404)');
+      return { success: false, message: 'Not implemented' };
+    }
+    return await res.json().catch(() => ({ success: false }));
+  } catch (error) {
+    console.error('[API] Error en saveBlocklist:', error);
+    return { success: false };
+  }
 }

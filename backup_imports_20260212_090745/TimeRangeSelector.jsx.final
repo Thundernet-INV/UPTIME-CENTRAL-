@@ -1,0 +1,174 @@
+// src/components/TimeRangeSelector.jsx
+// Selector de rangos de tiempo estilo Grafana/DownDetector
+
+import React, { useState, useEffect } from 'react';
+
+const RANGES = [
+  { label: 'Última 1 hora', value: 60 * 60 * 1000, default: true },
+  { label: 'Últimas 3 horas', value: 3 * 60 * 60 * 1000 },
+  { label: 'Últimas 6 horas', value: 6 * 60 * 60 * 1000 },
+  { label: 'Últimas 12 horas', value: 12 * 60 * 60 * 1000 },
+  { label: 'Últimas 24 horas', value: 24 * 60 * 60 * 1000 },
+  { label: 'Últimos 7 días', value: 7 * 24 * 60 * 60 * 1000 },
+  { label: 'Últimos 30 días', value: 30 * 24 * 60 * 60 * 1000 },
+];
+
+// Evento global para cambiar el rango de tiempo
+export const TIME_RANGE_CHANGED = 'time-range-changed';
+
+export default function TimeRangeSelector({ className = '' }) {
+  const [selectedRange, setSelectedRange] = useState(() => {
+    try {
+      const saved = localStorage.getItem('uptime-time-range');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed;
+      }
+    } catch (e) {}
+    return RANGES[0]; // 1 hora por defecto
+  });
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    // Guardar preferencia
+    localStorage.setItem('uptime-time-range', JSON.stringify(selectedRange));
+    
+    // Disparar evento global para que todas las gráficas se actualicen
+    const event = new CustomEvent(TIME_RANGE_CHANGED, {
+      detail: {
+        rangeMs: selectedRange.value,
+        label: selectedRange.label
+      }
+    });
+    window.dispatchEvent(event);
+    
+    console.log(`📊 Rango de tiempo cambiado: ${selectedRange.label}`);
+  }, [selectedRange]);
+
+  // Cerrar al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (isOpen && !e.target.closest('.time-range-selector')) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className={`time-range-selector ${className}`} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 16px',
+          background: 'var(--bg-secondary, #f3f4f6)',
+          border: '1px solid var(--border, #e5e7eb)',
+          borderRadius: '8px',
+          fontSize: '0.9rem',
+          color: 'var(--text-primary, #1f2937)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <span style={{ fontSize: '1.1rem' }}>📊</span>
+        <span>{selectedRange.label}</span>
+        <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>▼</span>
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            right: '0',
+            marginTop: '8px',
+            background: 'var(--bg-primary, white)',
+            border: '1px solid var(--border, #e5e7eb)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 1000,
+            minWidth: '200px',
+            overflow: 'hidden',
+          }}
+        >
+          {RANGES.map((range, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => {
+                setSelectedRange(range);
+                setIsOpen(false);
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '10px 16px',
+                textAlign: 'left',
+                border: 'none',
+                background: selectedRange.value === range.value 
+                  ? 'var(--info, #3b82f6)' 
+                  : 'transparent',
+                color: selectedRange.value === range.value 
+                  ? 'white' 
+                  : 'var(--text-primary, #1f2937)',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'background 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (selectedRange.value !== range.value) {
+                  e.currentTarget.style.background = 'var(--bg-hover, #f3f4f6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedRange.value !== range.value) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              {range.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Hook personalizado para usar el rango de tiempo en componentes
+export function useTimeRange(defaultRangeMs = 60 * 60 * 1000) {
+  const [rangeMs, setRangeMs] = useState(defaultRangeMs);
+  const [label, setLabel] = useState('Última 1 hora');
+
+  useEffect(() => {
+    const handleRangeChange = (e) => {
+      setRangeMs(e.detail.rangeMs);
+      setLabel(e.detail.label);
+    };
+
+    window.addEventListener(TIME_RANGE_CHANGED, handleRangeChange);
+    
+    // Cargar rango guardado
+    try {
+      const saved = localStorage.getItem('uptime-time-range');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setRangeMs(parsed.value);
+        setLabel(parsed.label);
+      }
+    } catch (e) {}
+
+    return () => window.removeEventListener(TIME_RANGE_CHANGED, handleRangeChange);
+  }, []);
+
+  return { rangeMs, label };
+}

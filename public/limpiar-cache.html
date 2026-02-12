@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Limpiar Caché</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #f3f4f6; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #111827; margin-top: 0; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-right: 12px; }
+        button:hover { background: #2563eb; }
+        .note { color: #6b7280; margin-top: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Limpiar Caché</h1>
+        <p>Haz clic en el botón para limpiar la caché y recargar la aplicación:</p>
+        
+        <button onclick="limpiarYRecargar()">Limpiar Caché y Recargar</button>
+        <button onclick="window.location.href='/'">Volver al Dashboard</button>
+        
+        <div class="note">
+            Esto eliminará:
+            <ul>
+                <li>localStorage (tema guardado)</li>
+                <li>sessionStorage</li>
+                <li>Caché de Service Worker</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function limpiarYRecargar() {
+            // Limpiar localStorage
+            localStorage.clear();
+            
+            // Limpiar sessionStorage
+            sessionStorage.clear();
+            
+            // Limpiar caché de Service Worker si existe
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+            
+            // Recargar la página
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

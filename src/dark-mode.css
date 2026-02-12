@@ -227,3 +227,377 @@ button[style*="position: fixed"][style*="top: 20px"][style*="right: 24px"] {
 button[style*="position: fixed"][style*="top: 20px"][style*="right: 24px"] {
   z-index: 10000 !important;
 }
+
+/* ========== SELECTOR DE RANGO DE TIEMPO ========== */
+.time-range-selector button {
+  background: var(--bg-secondary, #f3f4f6) !important;
+  border-color: var(--border, #e5e7eb) !important;
+  color: var(--text-primary, #1f2937) !important;
+}
+
+.time-range-selector button:hover {
+  background: var(--bg-hover, #e5e7eb) !important;
+}
+
+/* Modo oscuro */
+body.dark-mode .time-range-selector button {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button {
+  background: transparent !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button:hover {
+  background: #2d3238 !important;
+}
+
+/* ========== SELECTOR DE RANGO DE TIEMPO ========== */
+.time-range-selector button {
+  background: var(--bg-secondary, #f3f4f6) !important;
+  border-color: var(--border, #e5e7eb) !important;
+  color: var(--text-primary, #1f2937) !important;
+}
+
+.time-range-selector button:hover {
+  background: var(--bg-hover, #e5e7eb) !important;
+}
+
+/* Modo oscuro */
+body.dark-mode .time-range-selector button {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button {
+  background: transparent !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button:hover {
+  background: #2d3238 !important;
+}
+
+/* ========== SELECTOR DE TIEMPO - MODO OSCURO ========== */
+body.dark-mode .time-range-selector button {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button[style*="background: #3b82f6"] {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+/* ========== SELECTOR DE TIEMPO - MODO OSCURO ========== */
+body.dark-mode .time-range-selector button {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .time-range-selector button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button {
+  color: #e5e7eb !important;
+  border-bottom-color: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button[style*="background: #3b82f6"] {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+/* ========== FILTROS MULTISERVICE - MODO OSCURO ========== */
+body.dark-mode .multi-view {
+  background: #0f1217 !important;
+}
+
+body.dark-mode .filter-group {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .filter-select {
+  background: #0f1217 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn--small {
+  background: transparent !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn--small.is-active {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+body.dark-mode .multi-view-chart-wrapper div[style*="background: rgba(0,0,0,0.05)"] {
+  background: rgba(0,0,0,0.7) !important;
+}
+
+body.dark-mode .multi-view-chart-wrapper span[style*="background: var(--bg-primary)"] {
+  background: #1a1e24 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #2d3238 !important;
+}
+
+/* ========== MULTISERVICEVIEW - MODO OSCURO FORZADO ========== */
+body.dark-mode .multi-view,
+body.dark-mode div[style*="background-color: #0f1217"],
+body.dark-mode .multi-view-chart-wrapper {
+  background-color: #0f1217 !important;
+}
+
+body.dark-mode .filter-group,
+body.dark-mode div[style*="background: #1a1e24"] {
+  background-color: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode select,
+body.dark-mode input,
+body.dark-mode div[style*="background: #0f1217"] {
+  background-color: #0f1217 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode option {
+  background-color: #1a1e24 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn--small,
+body.dark-mode button[style*="border-radius: 20px"] {
+  background: transparent !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn--small.is-active,
+body.dark-mode button[style*="background: #2563eb"],
+body.dark-mode button[style*="background: #3b82f6"] {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+body.dark-mode div[style*="position: absolute"][style*="background: rgba(0,0,0,0.7)"] {
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+body.dark-mode span[style*="background: #1a1e24"] {
+  background: #1a1e24 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+/* Forzar fondo oscuro en elementos específicos */
+body.dark-mode .multi-view h2,
+body.dark-mode h2[style*="color: #f1f5f9"] {
+  color: #f1f5f9 !important;
+}
+
+body.dark-mode .filter-label,
+body.dark-mode span[style*="color: #94a3b8"] {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode p,
+body.dark-mode div[style*="color: #94a3b8"] {
+  color: #94a3b8 !important;
+}
+
+/* Corregir dropdown del selector de tiempo dentro de MultiServiceView */
+body.dark-mode .time-range-selector div[style*="position: absolute"] {
+  background: #1a1e24 !important;
+  border: 1px solid #2d3238 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button {
+  color: #e5e7eb !important;
+  border-bottom-color: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button:hover {
+  background: #2d3238 !important;
+}
+
+body.dark-mode .time-range-selector div[style*="position: absolute"] button[style*="background: #3b82f6"] {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+/* ========== MULTISERVICEVIEW - MODO OSCURO FORZADO ========== */
+body.dark-mode .multi-view-chart-wrapper,
+body.dark-mode div[style*="backgroundColor: #0f1217"] {
+  background-color: #0f1217 !important;
+}
+
+body.dark-mode .recharts-cartesian-grid line {
+  stroke: #2d3238 !important;
+}
+
+body.dark-mode .recharts-cartesian-axis line {
+  stroke: #2d3238 !important;
+}
+
+body.dark-mode .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8 !important;
+}
+
+body.dark-mode .recharts-legend-item-text {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .recharts-tooltip-wrapper {
+  background-color: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .recharts-tooltip-label {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .recharts-tooltip-item {
+  color: #94a3b8 !important;
+}
+
+/* ========== MULTISERVICEVIEW - MODO OSCURO FORZADO ========== */
+body.dark-mode .multi-view-chart-wrapper,
+body.dark-mode div[style*="backgroundColor: #0f1217"] {
+  background-color: #0f1217 !important;
+}
+
+body.dark-mode .recharts-cartesian-grid line {
+  stroke: #2d3238 !important;
+}
+
+body.dark-mode .recharts-cartesian-axis line {
+  stroke: #2d3238 !important;
+}
+
+body.dark-mode .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8 !important;
+}
+
+body.dark-mode .recharts-legend-item-text {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .recharts-tooltip-wrapper {
+  background-color: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .recharts-tooltip-label {
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .recharts-tooltip-item {
+  color: #94a3b8 !important;
+}
+
+/* ========== MULTISERVICEVIEW - ESTILOS ORIGINALES ========== */
+body.dark-mode .multi-view {
+  background-color: #0f1217 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .filters-toolbar {
+  background-color: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .filter-label {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .filter-select {
+  background-color: #0f1217 !important;
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn--small {
+  border-color: #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn--small:hover {
+  background-color: #2d3238 !important;
+}
+
+body.dark-mode .k-btn--small.is-active {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+body.dark-mode .multi-view-chart-wrapper {
+  background-color: #1a1e24 !important;
+  border-color: #2d3238 !important;
+}
+
+body.dark-mode .muted {
+  color: #94a3b8 !important;
+}

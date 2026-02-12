@@ -1,0 +1,96 @@
+// src/components/HistoryChart.jsx - VERSIÓN RÁPIDA
+import React, { useMemo } from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
+import { es } from 'date-fns/locale';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+export default function HistoryChart({ 
+  mode = 'instance', 
+  seriesMon = [], 
+  title = 'Latencia (ms)',
+  h = 300
+}) {
+  
+  const isDark = typeof document !== 'undefined' && document.body.classList.contains('dark-mode');
+  
+  const chartData = useMemo(() => {
+    const data = Array.isArray(seriesMon) ? seriesMon : [];
+    
+    return {
+      datasets: [{
+        label: title,
+        data: data.map(p => ({
+          x: p.ts || p.x,
+          y: p.sec || p.y || (p.ms / 1000) || 0
+        })),
+        borderColor: isDark ? '#60a5fa' : '#3b82f6',
+        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+      }]
+    };
+  }, [seriesMon, title, isDark]);
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false, // SIN animaciones
+    plugins: {
+      legend: { display: false },
+      tooltip: { mode: 'index', intersect: false },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: 'hour',
+          displayFormats: { hour: 'HH:mm' },
+          tooltipFormat: 'HH:mm',
+        },
+        adapters: { date: { locale: es } },
+        grid: { color: isDark ? '#2d3238' : '#e5e7eb' },
+        ticks: { color: isDark ? '#94a3b8' : '#6b7280' }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: isDark ? '#2d3238' : '#e5e7eb' },
+        ticks: { 
+          color: isDark ? '#94a3b8' : '#6b7280',
+          callback: (v) => `${v.toFixed(2)}s`
+        },
+      }
+    }
+  };
+
+  return (
+    <div style={{ height: h, width: '100%' }}>
+      <Line data={chartData} options={options} />
+    </div>
+  );
+}
