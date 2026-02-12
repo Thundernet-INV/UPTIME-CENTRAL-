@@ -1,0 +1,22 @@
+FIX DE NOTIFICACIONES PUSH - mié 11 feb 2026 15:53:02 -04
+====================================
+Backup realizado: 2026-02-11 15:53:02
+Archivo original: AlertsBanner.jsx
+Hash original: 7928f4481836d8cd659238e401dcff6844c2675377c0e947ee9c8dedc0ad8c45
+Hash nuevo: c61d3172068c5ce729ee38c5379115676aa083d6636bc81314976873b2f66dea
+
+📌 VERIFICACIÓN:
+1. Reinicia el frontend: npm run dev
+2. Abre las herramientas de desarrollo (F12)
+3. Busca alertas DOWN o variaciones de latencia
+4. Las notificaciones deben aparecer en el LADO IZQUIERDO
+
+🔄 ROLLBACK:
+Si necesitas restaurar el backup:
+   ./fix-notificaciones-push.sh --rollback
+
+📋 BACKUPS DISPONIBLES:
+   ls -la /home/thunder/kuma-dashboard-clean/kuma-ui/backup_notificaciones_*
+
+📊 LOGS DE VERIFICACIÓN:
+   Verifica en consola: localStorage.debug = 'alerts:*'

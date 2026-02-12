@@ -1,0 +1,27 @@
+FECHA: mié 11 feb 2026 17:59:19 -04
+BACKUP RESTAURADO: backup_frontend_20260210_125901
+BACKUP ACTUAL: backup_antes_rollback_20260211_175911
+
+📌 NOTAS IMPORTANTES:
+1. Esta versión tiene las notificaciones NEGRAS funcionales
+2. El botón ON/OFF funciona correctamente
+3. Los umbrales son: 100ms, 60s cooldown, 20 muestras
+4. NO incluye window.__dashboard (debug)
+
+🔧 PARA PROBAR NOTIFICACIONES:
+Abre la consola (F12) y pega:
+
+const event = new CustomEvent('test-notification', {
+  detail: {
+    id: 'test-' + Date.now(),
+    instance: '🧪 PRUEBA',
+    name: 'NOTIFICACIÓN',
+    ts: Date.now(),
+    msg: 'Rollback completado exitosamente'
+  }
+});
+window.dispatchEvent(event);
+
+🔄 SI ALGO SALE MAL:
+./rollback-estable.sh --rollback  # Para restaurar backup actual
+
