@@ -1,0 +1,14 @@
+// src/App.jsx
+import React from "react";
+import Dashboard from "./views/Dashboard.jsx";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import "./styles.css";
+import "./dark-mode.css"; // Nuevo archivo para estilos específicos
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Dashboard />
+    </ThemeProvider>
+  );
+}

@@ -1,0 +1,229 @@
+/* ================================================
+   MODO OSCURO - SELECTORES REFORZADOS
+   Activado con clase dark-mode en body
+================================================= */
+
+/* MARCADOR VISIBLE - ELIMINAR DESPUÉS DE PRUEBAS */
+body.dark-mode #root::before {
+  content: "🌙 MODO OSCURO ACTIVADO";
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #16a34a;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 999px;
+  z-index: 10000;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ========== BACKGROUND PRINCIPAL ========== */
+body.dark-mode,
+body.dark-mode #root,
+body.dark-mode main,
+body.dark-mode .home-services-section,
+body.dark-mode .home-services-container {
+  background-color: #0a0c10 !important;
+}
+
+/* ========== HEADER Y HERO ========== */
+body.dark-mode .hero {
+  background: linear-gradient(to right, #0f1217, #0a0c10) !important;
+}
+
+body.dark-mode .hero-title,
+body.dark-mode .hero-subtitle {
+  color: #ffffff !important;
+}
+
+/* ========== CARDS ========== */
+body.dark-mode .k-card {
+  background-color: #1a1e24 !important;
+  border: 1px solid #2d3238 !important;
+}
+
+body.dark-mode .k-card__title {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .k-metric {
+  color: #ffffff !important;
+}
+
+/* ========== INSTANCE CARDS ========== */
+body.dark-mode .instance-card {
+  background-color: #1a1e24 !important;
+  border: 1px solid #2d3238 !important;
+}
+
+body.dark-mode .instance-card-title {
+  color: #ffffff !important;
+}
+
+body.dark-mode .instance-card-status-label,
+body.dark-mode .instance-card-meta {
+  color: #9ca3af !important;
+}
+
+/* ========== SERVICE CARDS ========== */
+body.dark-mode .service-card {
+  background-color: #1a1e24 !important;
+  border: 1px solid #2d3238 !important;
+}
+
+body.dark-mode .service-card-title {
+  color: #ffffff !important;
+}
+
+body.dark-mode .service-card-type,
+body.dark-mode .service-card-url,
+body.dark-mode .service-card-status {
+  color: #9ca3af !important;
+}
+
+/* ========== TABLAS ========== */
+body.dark-mode .k-table,
+body.dark-mode table {
+  background-color: #1a1e24 !important;
+}
+
+body.dark-mode .k-table th,
+body.dark-mode table th {
+  background-color: #0f1217 !important;
+  color: #e5e7eb !important;
+  border-bottom: 2px solid #2d3238 !important;
+}
+
+body.dark-mode .k-table td,
+body.dark-mode table td {
+  border-bottom: 1px solid #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-table tr:hover,
+body.dark-mode table tr:hover {
+  background-color: #2d3238 !important;
+}
+
+/* ========== BOTONES ========== */
+body.dark-mode .k-btn,
+body.dark-mode button:not(.theme-toggle-injected):not(.home-btn) {
+  background-color: transparent !important;
+  border: 1px solid #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .k-btn:hover,
+body.dark-mode button:not(.theme-toggle-injected):hover {
+  background-color: #2d3238 !important;
+}
+
+body.dark-mode .k-btn.is-active {
+  background-color: #16a34a !important;
+  border-color: #16a34a !important;
+  color: white !important;
+}
+
+body.dark-mode .home-btn {
+  background-color: transparent !important;
+  border: 1px solid #2d3238 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .home-btn:hover {
+  background-color: #2d3238 !important;
+}
+
+/* ========== INPUTS Y SELECTS ========== */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: #0f1217 !important;
+  border: 1px solid #2d3238 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode input::placeholder {
+  color: #6b7280 !important;
+}
+
+/* ========== NOTIFICACIONES - MANTENER ESTILO NEGRO ========== */
+body.dark-mode .notificaciones-push-container div[style*="background: '#111827'"] {
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.9) !important;
+}
+
+/* ========== SCROLLBAR ========== */
+body.dark-mode ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+  background: #0f1217 !important;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: #2d3238 !important;
+  border-radius: 5px;
+  border: 2px solid #0f1217 !important;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #3a3f47 !important;
+}
+
+/* ========== BOTÓN DE MODO OSCURO EN HERO ========== */
+body.dark-mode .hero-search-button {
+  background: #0f1217 !important;
+  border: 1px solid #3a3f47 !important;
+  color: white !important;
+}
+
+body.dark-mode .hero-search-button:hover {
+  background: #1a1e24 !important;
+  border-color: #4b5563 !important;
+}
+
+/* ========== ESTILO PARA MODO CLARO ========== */
+.hero-search-button {
+  transition: all 0.2s ease;
+}
+
+.hero-search-button:hover {
+  filter: brightness(110%);
+  transform: translateY(-1px);
+}
+
+/* ========== BOTÓN DE MODO OSCURO EN ESQUINA SUPERIOR DERECHA ========== */
+body.dark-mode button[style*="position: fixed"][style*="top: 20px"][style*="right: 24px"] {
+  background: #1a1e24 !important;
+  border-color: #3a3f47 !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+body.dark-mode button[style*="position: fixed"][style*="top: 20px"][style*="right: 24px"]:hover {
+  background: #2d3238 !important;
+  border-color: #4b5563 !important;
+}
+
+/* Modo claro - botón con efecto glassmorphism */
+button[style*="position: fixed"][style*="top: 20px"][style*="right: 24px"] {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Asegurar que el botón esté por encima de todo */
+button[style*="position: fixed"][style*="top: 20px"][style*="right: 24px"] {
+  z-index: 10000 !important;
+}

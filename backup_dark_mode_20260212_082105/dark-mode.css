@@ -1,0 +1,294 @@
+/* src/dark-mode.css */
+
+/* Variables CSS globales */
+:root {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Estilos base */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Hero section */
+.hero {
+  background: linear-gradient(to right, var(--bg-secondary), var(--bg-primary));
+  color: var(--text-primary);
+}
+
+.hero-title, .hero-subtitle {
+  color: var(--text-primary);
+}
+
+/* Cards */
+.k-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+}
+
+.k-card.is-clickable:hover {
+  background-color: var(--bg-hover);
+}
+
+.k-card__title {
+  color: var(--text-secondary);
+}
+
+.k-metric {
+  color: var(--text-primary);
+}
+
+/* Instance Cards */
+.instance-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.instance-card:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.instance-card-title {
+  color: var(--text-primary);
+}
+
+.instance-card-status-label {
+  color: var(--text-secondary);
+}
+
+.instance-card-meta {
+  color: var(--text-tertiary);
+}
+
+/* Service Cards */
+.service-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.service-card-title {
+  color: var(--text-primary);
+}
+
+.service-card-type,
+.service-card-url {
+  color: var(--text-tertiary);
+}
+
+.service-card-status {
+  color: var(--text-secondary);
+}
+
+/* Tables */
+.k-table {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.k-table th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+.k-table td {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.k-table tr:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Buttons */
+.k-btn {
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--btn-ghost-border);
+  color: var(--btn-ghost-text);
+}
+
+.k-btn:hover {
+  background: var(--btn-ghost-hover);
+}
+
+.k-btn.is-active {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.k-btn--primary {
+  background: var(--info);
+  border-color: var(--info);
+  color: white;
+}
+
+.k-btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+/* Inputs and Selects */
+input, select, textarea {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+}
+
+input::placeholder {
+  color: var(--input-placeholder);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--info);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--info-bg);
+}
+
+/* Chips */
+.k-chip {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.k-chip--muted {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+/* MultiServiceView */
+.multi-view {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.filter-group {
+  background: var(--bg-tertiary);
+}
+
+.filter-label {
+  color: var(--text-secondary);
+}
+
+/* SLA Alerts */
+.alert-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+/* Charts - esto se aplica vía JavaScript en HistoryChart.jsx */
+.recharts-cartesian-grid line,
+.recharts-cartesian-axis line,
+.recharts-cartesian-axis .recharts-cartesian-axis-tick-value {
+  stroke: var(--chart-grid) !important;
+  fill: var(--chart-text) !important;
+}
+
+.recharts-tooltip-wrapper {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Notifications - mantienen su estilo negro original */
+.notificaciones-push-container div[style*="background: '#111827'"] {
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* AlertsBanner - modo oscuro adaptado */
+.alerts-banner {
+  background: var(--bg-primary);
+  border-left: 4px solid var(--border);
+  color: var(--text-primary);
+}
+
+/* Home button */
+.home-btn {
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--btn-ghost-border);
+  color: var(--btn-ghost-text);
+}
+
+.home-btn:hover {
+  background: var(--btn-ghost-hover);
+}
+
+/* Sparkline */
+.sparkline path {
+  stroke: var(--chart-line) !important;
+}
+
+/* Logo fallback */
+.k-logo--fallback {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+/* Scrollbar personalizada para modo oscuro */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 5px;
+    border: 2px solid var(--bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+  }
+}
+
+/* Instance Detail */
+.instance-detail-page {
+  background: var(--bg-secondary);
+}
+
+.instance-detail-title {
+  color: var(--text-primary);
+}
+
+.instance-detail-actions {
+  border-top: 1px solid var(--border);
+}
+
+/* Cards resumen */
+.k-cards {
+  background: var(--bg-secondary);
+}
+
+/* Filters toolbar */
+.filters-toolbar {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+}
+
+/* Search bar */
+.hero-search-input {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+}
+
+.hero-search-button {
+  background: var(--info);
+  color: white;
+}
+
+.hero-search-button:hover {
+  filter: brightness(110%);
+}

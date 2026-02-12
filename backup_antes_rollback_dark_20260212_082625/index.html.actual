@@ -5,14 +5,13 @@
     <title>Uptime Central</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <script>
-  <script>
     // Prevenir flash de modo claro/oscuro
     (function() {
       try {
         const theme = localStorage.getItem('uptime-theme');
         if (theme === 'dark') {
-          document.documentElement.style.backgroundColor = '#0a0c10';
-          document.body.style.backgroundColor = '#0a0c10';
+          document.documentElement.style.backgroundColor = '#0f172a';
+          document.documentElement.style.color = '#f1f5f9';
         }
       } catch (e) {}
     })();

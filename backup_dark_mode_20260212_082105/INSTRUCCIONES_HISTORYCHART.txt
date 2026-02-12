@@ -1,0 +1,34 @@
+INSTRUCCIONES PARA ACTUALIZAR HISTORYCHART.JSX MANUALMENTE:
+
+1. Abre: /home/thunder/kuma-dashboard-clean/kuma-ui/src/components/HistoryChart.jsx
+2. Agrega al inicio: 
+   import { useTheme } from '../contexts/ThemeContext';
+
+3. Dentro del componente, después de los useState:
+   const { theme } = useTheme();
+
+4. En la configuración de Chart.js, agrega/modifica:
+   
+   options: {
+     scales: {
+       x: {
+         grid: { color: theme.chartGrid },
+         ticks: { color: theme.chartText }
+       },
+       y: {
+         grid: { color: theme.chartGrid },
+         ticks: { color: theme.chartText }
+       }
+     },
+     plugins: {
+       legend: { labels: { color: theme.chartText } },
+       tooltip: {
+         backgroundColor: theme.bgTertiary,
+         titleColor: theme.textPrimary,
+         bodyColor: theme.textSecondary,
+         borderColor: theme.border
+       }
+     }
+   }
+
+Backup disponible en: /home/thunder/kuma-dashboard-clean/kuma-ui/backup_dark_mode_20260212_082105/HistoryChart.jsx.bak
