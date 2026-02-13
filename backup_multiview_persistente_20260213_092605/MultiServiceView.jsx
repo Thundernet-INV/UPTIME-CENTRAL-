@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import History from "../historyEngine.js";
 import HistoryChart from "./HistoryChart.jsx";
 
@@ -24,10 +24,6 @@ export default function MultiServiceView({ monitorsAll = [] }) {
   const [seriesData, setSeriesData] = useState({});
   const [selectedHours, setSelectedHours] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
-  
-  // 🟢 REF para saber si el usuario ha interactuado con las sedes
-  const userInteracted = useRef(false);
-  const prevServiceRef = useRef("");
 
   // Lista de servicios HTTP
   const services = useMemo(() => {
@@ -60,46 +56,18 @@ export default function MultiServiceView({ monitorsAll = [] }) {
     return service?.instances || [];
   }, [services, selectedService]);
 
-  // 🟢 CORREGIDO: Seleccionar todas las instancias SOLO si:
-  // 1. Cambió el servicio
-  // 2. El usuario NO ha interactuado con las sedes
+  // Seleccionar todas las instancias por defecto
   useEffect(() => {
-    // Solo ejecutar si hay un servicio seleccionado
-    if (!selectedService || instancesWithService.length === 0) return;
-    
-    // Si cambió el servicio (diferente al anterior)
-    if (prevServiceRef.current !== selectedService) {
-      console.log(`🔄 Servicio cambiado: ${prevServiceRef.current} → ${selectedService}`);
-      
-      // Resetear interacción del usuario al cambiar servicio
-      userInteracted.current = false;
-      
-      // Seleccionar TODAS las instancias del nuevo servicio
+    if (instancesWithService.length > 0) {
       setSelectedInstances(instancesWithService);
-      
-      // Actualizar referencia
-      prevServiceRef.current = selectedService;
     }
-    // Si NO ha cambiado el servicio y el usuario NO ha interactuado, NO hacer nada
-    // (mantener las selecciones actuales)
-    
-  }, [selectedService, instancesWithService]);
+  }, [instancesWithService]);
 
-  // 🟢 Función para toggle de sedes - MARCA QUE EL USUARIO INTERACTUÓ
-  const toggleInstance = (name) => {
-    userInteracted.current = true;
-    setSelectedInstances(prev =>
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
-  };
-
-  // Cargar datos (mantiene selectedInstances actual)
+  // Cargar datos
   useEffect(() => {
     let active = true;
     const load = async () => {
       if (!selectedService || selectedInstances.length === 0) return;
-      
-      console.log(`📊 Cargando datos para ${selectedService} - ${selectedInstances.length} sedes (${selectedHours}h) - Interacción usuario: ${userInteracted.current}`);
       
       const data = {};
       await Promise.all(
@@ -116,6 +84,12 @@ export default function MultiServiceView({ monitorsAll = [] }) {
     return () => { active = false; };
   }, [selectedService, selectedInstances, selectedHours]);
 
+  const toggleInstance = (name) => {
+    setSelectedInstances(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
+  };
+
   const chartSeries = selectedInstances.map(instance => ({
     id: instance,
     label: instance,
@@ -128,29 +102,28 @@ export default function MultiServiceView({ monitorsAll = [] }) {
   return (
     <div style={{ padding: '24px' }}>
       {/* HEADER CON SELECTOR DE TIEMPO */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", padding: "0 4px" }}>
         <h2 style={{ margin: 0 }}>Comparar servicio HTTP por sede</h2>
         
+        {/* SELECTOR DE TIEMPO DENTRO DEL COMPONENTE */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setIsOpen(!isOpen)}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
               padding: '6px 14px',
-              background: 'var(--bg-tertiary, #f3f4f6)',
-              border: '1px solid var(--border, #e5e7eb)',
+              background: '#f3f4f6',
+              border: '1px solid #e5e7eb',
               borderRadius: '20px',
               fontSize: '0.85rem',
-              color: 'var(--text-primary, #1f2937)',
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
             }}
           >
-            <span style={{ fontSize: '1rem' }}>🕒</span>
-            <span style={{ fontWeight: '500' }}>{selectedLabel}</span>
-            <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>▼</span>
+            <span>🕒</span>
+            <span>{selectedLabel}</span>
+            <span>▼</span>
           </button>
           
           {isOpen && (
@@ -161,8 +134,8 @@ export default function MultiServiceView({ monitorsAll = [] }) {
               marginTop: '4px',
               background: 'white',
               border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              borderRadius: '6px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               zIndex: 9999,
               minWidth: '120px',
             }}>
@@ -196,12 +169,7 @@ export default function MultiServiceView({ monitorsAll = [] }) {
       <div style={{ marginBottom: '20px' }}>
         <select
           value={selectedService}
-          onChange={(e) => {
-            // Cuando el usuario cambia el servicio MANUALMENTE
-            setSelectedService(e.target.value);
-            // Resetear interacción para que el nuevo servicio seleccione todas sus sedes
-            userInteracted.current = false;
-          }}
+          onChange={(e) => setSelectedService(e.target.value)}
           style={{
             padding: '8px 12px',
             borderRadius: '6px',
@@ -232,15 +200,11 @@ export default function MultiServiceView({ monitorsAll = [] }) {
                   background: selectedInstances.includes(name) ? '#3b82f6' : 'transparent',
                   color: selectedInstances.includes(name) ? 'white' : '#1f2937',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
                 }}
               >
                 {name}
               </button>
             ))}
-          </div>
-          <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#6b7280' }}>
-            {selectedInstances.length} de {instancesWithService.length} sedes seleccionadas
           </div>
         </div>
       )}

@@ -1,3 +1,25 @@
+#!/bin/bash
+# fix-multiview-seleccion-persistente.sh - MANTENER SEDES SELECCIONADAS AL ACTUALIZAR
+
+echo "====================================================="
+echo "🔧 CORRIGIENDO SELECCIÓN PERSISTENTE EN MULTIVIEW"
+echo "====================================================="
+
+FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
+BACKUP_DIR="${FRONTEND_DIR}/backup_multiview_persistente_$(date +%Y%m%d_%H%M%S)"
+
+# ========== 1. CREAR BACKUP ==========
+echo ""
+echo "[1] Creando backup..."
+mkdir -p "$BACKUP_DIR"
+cp "${FRONTEND_DIR}/src/components/MultiServiceView.jsx" "$BACKUP_DIR/"
+echo "✅ Backup creado en: $BACKUP_DIR"
+echo ""
+
+# ========== 2. ACTUALIZAR MULTISERVICEVIEW.JSX ==========
+echo "[2] Actualizando MultiServiceView.jsx con selección persistente..."
+
+cat > "${FRONTEND_DIR}/src/components/MultiServiceView.jsx" << 'EOF'
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import History from "../historyEngine.js";
 import HistoryChart from "./HistoryChart.jsx";
@@ -258,3 +280,59 @@ export default function MultiServiceView({ monitorsAll = [] }) {
     </div>
   );
 }
+EOF
+
+echo "✅ MultiServiceView.jsx actualizado - selección PERSISTENTE"
+echo ""
+
+# ========== 3. LIMPIAR CACHÉ ==========
+echo "[3] Limpiando caché de Vite..."
+
+cd "$FRONTEND_DIR"
+rm -rf node_modules/.vite .vite
+echo "✅ Caché limpiada"
+echo ""
+
+# ========== 4. REINICIAR FRONTEND ==========
+echo "[4] Reiniciando frontend..."
+
+pkill -f "vite" 2>/dev/null || true
+npm run dev &
+sleep 3
+
+# ========== 5. INSTRUCCIONES ==========
+echo ""
+echo "====================================================="
+echo "✅✅ SELECCIÓN PERSISTENTE CORREGIDA ✅✅"
+echo "====================================================="
+echo ""
+echo "📋 CAMBIOS REALIZADOS:"
+echo ""
+echo "   1. 🟢 userInteracted.useRef(false) - Marca cuando el usuario toca las sedes"
+echo "   2. 🟢 prevServiceRef - Guarda el servicio anterior"
+echo "   3. 🎯 Lógica corregida:"
+echo "      • Al cambiar SERVICIO → selecciona TODAS las sedes"
+echo "      • Al actualizar DATOS → mantiene las sedes seleccionadas"
+echo "      • Al hacer click en una sede → marca interacción y NO se resetea"
+echo ""
+echo "🔄 PRUEBA AHORA:"
+echo ""
+echo "   1. Abre http://10.10.31.31:5173"
+echo "   2. Ve a 'Comparar'"
+echo "   3. ✅ Selecciona SOLO 3 sedes (deselecciona las demás)"
+echo "   4. ✅ Espera 30 segundos (que se actualicen los datos)"
+echo "   5. ✅ LAS 3 SEDES SIGUEN SELECCIONADAS"
+echo "   6. ✅ Cambia de servicio - selecciona TODAS las sedes del nuevo servicio"
+echo ""
+echo "====================================================="
+
+# Preguntar si quiere abrir el navegador
+read -p "¿Abrir el dashboard ahora? (s/N): " OPEN_BROWSER
+if [[ "$OPEN_BROWSER" =~ ^[Ss]$ ]]; then
+    xdg-open "http://10.10.31.31:5173" 2>/dev/null || \
+    open "http://10.10.31.31:5173" 2>/dev/null || \
+    echo "Abre http://10.10.31.31:5173 en tu navegador"
+fi
+
+echo ""
+echo "✅ Script completado"
