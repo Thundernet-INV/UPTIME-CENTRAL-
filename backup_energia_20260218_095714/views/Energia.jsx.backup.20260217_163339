@@ -1,0 +1,22 @@
+// src/views/Energia.jsx
+import React from 'react';
+import EnergiaCards from './EnergiaCards.jsx';
+import './energia-cards.css';
+
+// Contenedor simple que acepta diferentes props de datos
+// y muestra SOLO la instancia 'energia' en forma de cards.
+export default function Energia(props = {}) {
+  const { monitorsAll, monitors, items, data } = props;
+  const source =
+    (Array.isArray(monitorsAll) && monitorsAll) ||
+    (Array.isArray(monitors) && monitors) ||
+    (Array.isArray(items) && items) ||
+    (Array.isArray(data) && data) ||
+    [];
+
+  return (
+    <div className="energia-view">
+      <EnergiaCards items={source} />
+    </div>
+  );
+}

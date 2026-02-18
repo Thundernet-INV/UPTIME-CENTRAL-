@@ -1,0 +1,1270 @@
+/* ============================
+   PARTE 1 — BASE GLOBAL - 100% ANCHO
+   ============================ */
+
+/* Variables generales */
+:root {
+  --bg: #f7f8fa;
+  --text: #111827;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --ok: #16a34a;
+  --warn: #f59e0b;
+  --down: #dc2626;
+  --info: #2563eb;
+  --violet: #7c3aed;
+  --shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
+
+  /* ThunderDetector */
+  --color-bg-hero: #111217;
+  --color-bg-page: #f5f6fa;
+  --color-accent: #ff4a4a;
+  --color-text-main: #ffffff;
+  --color-text-dark: #111217;
+  --color-card-border: #e0e3eb;
+  --radius-lg: 16px;
+  --shadow-soft: 0 14px 30px rgba(15, 17, 32, 0.35);
+  --transition-fast: 0.2s ease-out;
+}
+
+/* Reset general */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, Segoe UI,
+               Roboto, Ubuntu, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  width: 100%;
+  min-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Utilidades básicas */
+h1 { font-size: 28px; margin: 16px 0 10px; }
+h2 { font-size: 20px; margin: 0; }
+
+/* Texto solo para screen readers */
+.sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+/* Utilidad: empujar a la derecha */
+.push-right {
+  margin-left: auto !important;
+}
+
+/* ============================
+   CONTENEDORES - 100% ANCHO
+   ============================ */
+
+/* Contenedor base - 100% ancho */
+.container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 24px;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+/* Sección de servicios - 100% ancho */
+.home-services-section {
+  padding: 32px 16px 40px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.home-services-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 16px;
+}
+
+.home-section-title {
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  color: #1b1d2a;
+}
+
+/* ============================
+   HEADER THUNDER-DETECTOR - 100% ANCHO
+   ============================ */
+
+.thunder-header {
+  width: 100%;
+  max-width: 100%;
+  background: #000;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 2px solid #222;
+}
+
+.thunder-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+.thunder-title {
+  font-size: 1.6rem;
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+main {
+  margin-top: 0 !important;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ============================
+   HERO SECTION - 100% ANCHO
+   ============================ */
+
+.hero {
+  position: relative;
+  padding: 100px 16px 120px;
+  width: 100%;
+  max-width: 100%;
+  background: radial-gradient(circle at top left, #202232 0, #111217 55%, #050509 100%);
+  color: var(--color-text-main);
+  overflow: hidden;
+  min-height: 500px;
+}
+
+.hero-content {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  padding: 0 16px;
+}
+
+.hero-title {
+  font-size: 2.4rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  line-height: 1.2;
+  width: 100%;
+}
+
+.hero-subtitle {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  margin-bottom: 24px;
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* LOGO DEL HERO - 100% ANCHO */
+
+.hero-logo-left {
+  position: absolute;
+  top: 200px;
+  left: -25px;
+  height: 450px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(0,0,0,0.6));
+  z-index: 5;
+}
+
+/* Cuando el logo está a punto de superponerse ? colócalo arriba del hero-content */
+@media (max-width: 1600px) {
+  .hero-logo-left {
+    position: static;       /* Ya no flota */
+    display: block;
+    margin: 0 auto 24px;    /* Centrado arriba */
+    height: 600px;          /* Más pequeño para no aplastar contenido */
+    left: auto;
+    top: auto;
+  }
+
+  .hero-content {
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+    padding-top: 10px;
+  }
+}
+
+/* Ajuste adicional para pantallas medianas/pequeñas */
+@media (max-width: 768px) {
+  .hero-logo-left {
+    height: 240px;          /* Ajuste móvil */
+    margin-bottom: 16px;
+  }
+}
+
+/* Buscador del hero - 100% ancho */
+.hero-search {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 4px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.hero-search form {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  margin: 0;
+}
+
+.hero-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 18px;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  border-radius: 999px;
+  width: 100%;
+}
+
+.hero-search button {
+  border: none;
+  padding: 0 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.hero-search button:hover {
+  background: #ff3333;
+  transform: translateY(-1px);
+}
+
+.hero-search button:active {
+  transform: scale(0.97);
+}
+
+/* Ola decorativa inferior - 100% ancho */
+.hero-wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 80px;
+  background:
+    radial-gradient(circle at 10% -30%, rgba(255, 74, 74, 0.7) 0, transparent 55%),
+    radial-gradient(circle at 90% -40%, rgba(255, 74, 74, 0.7) 0, transparent 55%);
+  opacity: 0.5;
+}
+
+/* ============================
+   GRID LAYOUTS - 100% ANCHO
+   ============================ */
+
+/* Grids principales - 100% ancho */
+.service-grid,
+.services-grid,
+.k-grid-services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 16px;
+}
+
+.instance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 32px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+.instance-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+.instance-detail-chart {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+/* ============================
+   SERVICE CARD (ThunderDetector) - 100% ANCHO
+   ============================ */
+
+.service-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease-out,
+    box-shadow 0.16s ease-out,
+    border-color 0.16s ease-out;
+  min-height: 190px;
+  width: 100%;
+}
+
+.service-card:hover,
+.service-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+  border-color: rgba(255, 74, 74, 0.5);
+  outline: none;
+}
+
+/* Header: logo + textos */
+.service-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.service-logo,
+.service-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #f4f5ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #333757;
+  object-fit: contain;
+}
+
+.service-card-header-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Título (2 líneas máx) */
+.service-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  width: 100%;
+}
+
+/* Tipo de servicio */
+.service-card-type {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+  margin-top: 2px;
+}
+
+/* Estado / descripción corta */
+.service-card-status {
+  font-size: 0.8rem;
+  color: #61657c;
+  margin: 4px 0 0;
+  width: 100%;
+}
+
+/* Footer: latencia */
+.service-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #61657c;
+  margin-top: 2px;
+  width: 100%;
+}
+
+.service-card-latency-label {
+  opacity: 0.8;
+}
+
+.service-card-latency-value {
+  font-weight: 600;
+}
+
+/* Mini chart / sparkline decorativa */
+.service-card-mini-chart {
+  margin-top: 6px;
+  height: 70px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(26, 115, 232, 0.15),
+    rgba(255, 74, 74, 0.4)
+  );
+  opacity: 0.7;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.service-card-mini-chart canvas,
+.service-card-mini-chart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Estados de color */
+.service-card--ok .service-card-status {
+  color: #0c8346;
+}
+
+.service-card--issues .service-card-status {
+  color: #b45309;
+}
+
+.service-card--down .service-card-status {
+  color: #b91c1c;
+}
+
+/* ============================
+   INSTANCE CARD (sedes) - 100% ANCHO
+   ============================ */
+
+.instance-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  border: 1px solid #e0e3eb;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 150px;
+  transition:
+    transform 0.16s ease-out,
+    box-shadow 0.16s ease-out,
+    border-color 0.16s ease-out;
+  width: 100%;
+}
+
+.instance-card:hover,
+.instance-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+  border-color: rgba(255, 74, 74, 0.5);
+  outline: none;
+}
+
+.instance-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.instance-card-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  background: #f4f5ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #333757;
+}
+
+.instance-card-header-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.instance-card-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.instance-card-status-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 2px 0 0;
+  width: 100%;
+}
+
+.instance-card-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 4px 0 0;
+  width: 100%;
+}
+
+.instance-card-uptime {
+  font-size: 0.8rem;
+  color: #4b5563;
+  margin: 2px 0 0;
+  width: 100%;
+}
+
+/* ============================
+   KPIs & STATS CARDS - 100% ANCHO
+   ============================ */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 12px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+.kpi,
+.kpi-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  border-left: 6px solid var(--info);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
+/* Colores de borde */
+.kpi.ok,
+.kpi-card.ok {
+  border-left-color: var(--ok);
+}
+
+.kpi.down,
+.kpi-card.down {
+  border-left-color: var(--down);
+}
+
+.kpi.info,
+.kpi-card.info {
+  border-left-color: var(--info);
+}
+
+.kpi.prom,
+.kpi-card.prom {
+  border-left-color: var(--violet);
+}
+
+/* Tipografía KPIs */
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: -4px;
+}
+
+.kpi-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+/* K-CARDS (KPI Summary Cards) - 100% ancho */
+.k-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 16px 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+.k-card.k-card--summary {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5e7eb;
+  border-left-width: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
+/* Colores por posición (UP, DOWN, TOTAL, PROM) */
+.k-cards > .k-card.k-card--summary:nth-child(1) {
+  border-left-color: #16a34a; /* verde - UP */
+}
+
+.k-cards > .k-card.k-card--summary:nth-child(2) {
+  border-left-color: #dc2626; /* rojo - DOWN */
+}
+
+.k-cards > .k-card.k-card--summary:nth-child(3) {
+  border-left-color: #2563eb; /* azul - TOTAL */
+}
+
+.k-cards > .k-card.k-card--summary:nth-child(4) {
+  border-left-color: #7c3aed; /* morado - PROM */
+}
+
+/* Tipografía K-Cards */
+.k-card__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.k-metric {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.k-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: -2px;
+}
+
+/* ============================
+   STATUS PILLS
+   ============================ */
+
+.status-pill,
+.instance-card-pill,
+.service-card-status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.status-pill--ok,
+.instance-card-pill--ok {
+  background: rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+
+.status-pill--down,
+.instance-card-pill--down {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+
+.status-pill--issues,
+.instance-card-pill--issues {
+  background: rgba(234, 179, 8, 0.2);
+  color: #b45309;
+}
+
+.instance-card-pill {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 3px 10px;
+}
+
+.instance-card-pill--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.instance-card-pill--issues {
+  background: rgba(234, 179, 8, 0.12);
+  color: #b45309;
+}
+
+.instance-card-pill--down {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+/* ============================
+   BUTTONS & CONTROLS - 100% ANCHO
+   ============================ */
+
+/* Botones principales */
+.home-btn,
+.compare-btn {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.home-btn:hover,
+.compare-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.home-btn.active,
+.compare-btn.active {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+/* Botones generales */
+.global-toggle,
+.k-btn,
+.btn {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.global-toggle:hover,
+.k-btn:hover,
+.btn:hover {
+  background: #f3f4f6;
+}
+
+.global-toggle.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+/* Header Controls - 100% ancho */
+.header-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+.filters-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.filters-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+/* Inputs & Selects - 100% ancho */
+.search-input,
+.filter-select,
+.sel,
+select {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.9rem;
+  color: #111827;
+  width: 100%;
+}
+
+.search-input {
+  flex: 1 1 100%;
+}
+
+/* Playlist Controls */
+.autoplay-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.autoplay-controls input,
+.autoplay-controls select {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+  padding: 6px 8px;
+}
+
+.playlist-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.header-tools .autoplay-controls {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #fff;
+}
+
+.header-tools .autoplay-controls label {
+  font-size: 12px;
+  color: #374151;
+}
+
+/* ============================
+   TABLES - 100% ANCHO
+   ============================ */
+
+.k-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.k-table th {
+  text-align: left;
+  padding: 10px;
+  background: #f3f4f6;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.k-table td {
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+/* Celda de servicio */
+.k-cell-service {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.k-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  object-fit: contain;
+}
+
+.k-logo--fallback {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  border-radius: 4px;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.k-service-text {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.k-service-name {
+  font-weight: 600;
+}
+
+.k-service-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* ============================
+   ALERTS - 100% ANCHO
+   ============================ */
+
+.k-alerts {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px;
+}
+
+.k-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.k-alert--danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.k-alert__close {
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  cursor: pointer;
+  color: #991b1b;
+}
+
+/* ============================
+   UTILITY CLASSES
+   ============================ */
+
+.k-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef2ff;
+  color: #1f2937;
+  border: 1px solid #c7d2fe;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.k-chip--muted {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.k-card--site.clickable {
+  cursor: pointer;
+}
+
+.k-card--site.clickable:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.k-actions button {
+  z-index: 2;
+}
+
+/* Ocultar toggles globales cuando ruta=sede */
+[data-route="sede"] .global-toggle {
+  display: none !important;
+}
+
+/* ============================
+   MULTI-VIEW (COMPARE) - 100% ANCHO
+   ============================ */
+
+.multi-view {
+  width: 100%;
+  max-width: 100%;
+  margin: 24px 0 32px;
+  padding: 0 16px;
+}
+
+.multi-view-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.multi-view-chart-section {
+  margin-top: 12px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  padding: 20px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  width: 100%;
+  max-width: 100%;
+}
+
+.multi-view-chart-section > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+
+.multi-view-chart-section canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.multi-view .k-card,
+.multi-view .service-card,
+.multi-view .instance-card {
+  min-height: 150px;
+  width: 100%;
+}
+
+/* Contenedor de la gráfica en MultiServiceView */
+.multi-view-chart-wrapper {
+  position: relative;
+}
+
+/* Overlay mientras cambia de servicio (auto o manual) */
+.multi-view-chart-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #4b5563;
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease-in-out;
+}
+
+/* Cuando React la renderiza, queremos que aparezca suave */
+.multi-view-chart-wrapper .multi-view-chart-overlay {
+  opacity: 1;
+}
+/* ============================
+   AJUSTE FINAL PARA 100% - SIN MEDIA QUERIES
+   ============================ */
+
+/* Asegurar que todo use 100% del contenedor */
+.service-grid > *,
+.services-grid > *,
+.k-grid-services > *,
+.instance-grid > *,
+.instance-detail-grid > * {
+  width: 100%;
+}
+
+/* Ajuste para grids en pantallas muy pequeñas */
+.service-grid,
+.services-grid,
+.k-grid-services,
+.instance-grid,
+.instance-detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* Asegurar que las cards no se hagan demasiado pequeñas */
+.service-card,
+.instance-card {
+  min-width: 0; /* Permite que se reduzcan */
+}
+
+/* Forzar 100% en todos los elementos internos */
+.kpi, .kpi-card, .k-card.k-card--summary {
+  min-width: 0;
+}
+
+/* Asegurar que las tablas sean 100% */
+.k-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* Ajuste para elementos de control */
+.filters-inline > * {
+  min-width: 0;
+  flex: 1;
+}
+
+/* ============================
+   BAJAR ELEMENTOS DEL HERO - SOLO POSICIÓN
+   ============================ */
+
+.hero-content {
+  margin-top: 200px; /* Empuja todo hacia abajo */
+  margin-left: 50px; /* Mueve todo a la derecha */
+}
+
+.hero-wave {
+  bottom: -20px; /* Sube la línea negra (gradiente) para que esté más cerca */
+}
+
+/* Para pantallas pequeñas */
+@media (max-width: 768px) {
+  .hero-content {
+    margin-top: 30px;
+  }
+  
+  .hero-wave {
+    bottom: -15px;
+  }
+}
+
+
+/*=============================================
+Estilo para botón de sede seleccionada 
+=================================================*/
+
+.k-btn.is-active,
+.k-btn--ghost.is-active {
+  background: #eef6ff;   /* azul sutil */
+  color: none;        /* azul moderno */
+  border-color: #bfdbfe; /* borde suave */
+  box-shadow: #bfdbfe;
+}
+
+
+
+
+
+
+/* ===== FIX: MOSTRAR IP EN MONITORES PING ===== */
+.service-card-url {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 4px;
+  word-break: break-all;
+  font-family: monospace;
+}
+
+.service-card-header-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.service-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #4b5563;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.service-logo {
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.service-card-type {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

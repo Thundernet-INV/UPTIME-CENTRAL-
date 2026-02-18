@@ -1,0 +1,375 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import Energia from "./Energia.jsx";
+
+import Hero from "../components/Hero.jsx";
+import AlertsBanner from "../components/AlertsBanner.jsx";
+import Cards from "../components/Cards.jsx";
+import InstanceDetail from "../components/InstanceDetail.jsx";
+import SLAAlerts from "../components/SLAAlerts.jsx";
+import InstanceCard from "../components/InstanceCard.jsx";
+import MultiServiceView from "../components/MultiServiceView.jsx";
+
+import { fetchAll, getBlocklist, saveBlocklist } from "../api.js";
+import History from "../historyEngine.js";
+import { notify } from "../utils/notify.js";
+
+
+const SLA_CONFIG = { uptimeTarget: 99.9, maxLatencyMs: 800 };
+const ALERT_AUTOCLOSE_MS = 10000;
+
+/** Ruteo por hash: #/sede/<instancia>, #/comparar, #/energia, vacío -> home */
+function getRoute() {
+  const parts = (window.location.hash || "")
+    .slice(1)
+    .split("/")
+    .filter(Boolean);
+
+  if (parts[0] === "sede" && parts[1]) {
+    return { name: "sede", instance: decodeURIComponent(parts[1]) };
+  }
+  if (parts[0] === "comparar") {
+    return { name: "compare" };
+  }
+  if (parts[0] === "energia") {
+    return { name: "energia" };
+  }
+  return { name: "home" };
+}
+
+const keyFor = (i, n = "") => JSON.stringify({ i, n });
+const fromKey = (k) => {
+  try { return JSON.parse(k); } catch { return { i: "", n: "" }; }
+};
+
+export default function Dashboard() {
+  // __ENERGIA_GATE_V4__
+  try {
+    const h = (typeof window !== "undefined" ? (window.location.hash || "") : "").toLowerCase();
+    const routeName = (typeof route !== "undefined" && route && route.name ? String(route.name).toLowerCase() : "");
+    if (h.startsWith("#/energia") || h === "#energia" || h.includes("energia") || routeName === "energia") {
+      return <Energia monitorsAll={(typeof monitors !== "undefined" ? monitors : (typeof props !== "undefined" ? (props.monitorsAll || props.monitors || []) : []))} />;
+    }
+  } catch (e) {}
+  // __ENERGIA_GATE_INSERTED__
+  try {
+    const h = window.location.hash || "";
+    if (h.startsWith("#/energia")) {
+      return <Energia monitorsAll={typeof monitors !== "undefined" ? monitors : (typeof props !== "undefined" ? (props.monitorsAll || props.monitors) : undefined)} />;
+    }
+  } catch (e) {}
+  // ===== Estado base =====
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const [monitors, setMonitors] = useState([]);
+  const [instances, setInstances] = useState([]);
+  const [filters, setFilters] = useState({ instance: "", type: "", q: "", status: "all" });
+  const [hidden, setHidden] = useState(new Set());
+  const [route, setRoute] = useState(getRoute());
+  const [alerts, setAlerts] = useState([]);
+
+  // ===== Ruteo por hash =====
+  useEffect(() => {
+    const onHash = () => setRoute(getRoute());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  // ===== Init: primer fetch + blocklist + snapshot =====
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    (async () => {
+      try {
+        const { instances, monitors } = await fetchAll();
+        setInstances(instances || []);
+        setMonitors(monitors || []);
+        History.addSnapshot?.(monitors || []);
+
+        try {
+          const bl = await getBlocklist();
+          setHidden(new Set((bl?.monitors ?? []).map((k) => keyFor(k.instance, k.name))));
+        } catch {
+          // ignorar errores de blocklist
+        }
+      } catch (e) { console.error(e); }
+    })();
+  }, []);
+
+  // ===== Polling simple =====
+  useEffect(() => {
+    let stop = false;
+    (async function loop() {
+      if (stop) return;
+      try {
+        const { instances, monitors } = await fetchAll();
+        setInstances(instances || []);
+        setMonitors(monitors || []);
+        History.addSnapshot?.(monitors || []);
+      } catch (e) { console.error(e); }
+      setTimeout(loop, 15000);
+    })();
+    return () => { stop = true; };
+  }, []);
+
+  // ===== Filtros base (sin estado UP/DOWN) =====
+  const baseMonitors = useMemo(
+    () =>
+      monitors.filter((m) => {
+        if (filters.instance && m.instance !== filters.instance) return false;
+        if (filters.type && m.info?.monitor_type !== filters.type) return false;
+        if (filters.q) {
+          const hay = ((m.info?.monitor_name ?? "") + " " + (m.info?.monitor_url ?? "")).toLowerCase();
+          if (!hay.includes(filters.q.toLowerCase())) return false;
+        }
+        return true;
+      }),
+    [monitors, filters.instance, filters.type, filters.q]
+  );
+
+  // ===== Lista de tipos de servicio (monitor_type) =====
+  const serviceTypes = useMemo(() => {
+    const set = new Set();
+    for (const m of monitors) {
+      const t = m.info?.monitor_type;
+      if (t) set.add(t);
+    }
+    return Array.from(set).sort();
+  }, [monitors]);
+
+  // ===== Métricas header =====
+  const headerCounts = useMemo(() => {
+    const up = baseMonitors.filter((m) => m.latest?.status === 1).length;
+    const down = baseMonitors.filter((m) => m.latest?.status === 0).length;
+    const total = baseMonitors.length;
+    const rts = baseMonitors.map((m) => m.latest?.responseTime).filter((v) => v != null);
+    const avgMs = rts.length ? Math.round(rts.reduce((a, b) => a + b, 0) / rts.length) : null;
+    return { up, down, total, avgMs };
+  }, [baseMonitors]);
+
+  // ===== Estado efectivo UP/DOWN =====
+  const effectiveStatus = filters.status;
+  function setStatus(s) { setFilters((p) => ({ ...p, status: s })); }
+
+  // ===== Lista final (con estado) =====
+  const filteredAll = useMemo(
+    () =>
+      baseMonitors.filter((m) => {
+        if (effectiveStatus === "up" && m.latest?.status !== 1) return false;
+        if (effectiveStatus === "down" && m.latest?.status !== 0) return false;
+        return true;
+      }),
+    [baseMonitors, effectiveStatus]
+  );
+
+  // ===== Agrupación por instancia (para la grid del Home) =====
+  const monitorsByInstance = useMemo(() => {
+    const map = new Map();
+    for (const m of filteredAll) {
+      const list = map.get(m.instance) || [];
+      list.push(m);
+      map.set(m.instance, list);
+    }
+    return map;
+  }, [filteredAll]);
+
+  // Hidden / Blocklist
+  async function persistHidden(next) {
+    const arr = [...next].map((k) => {
+      const { i, n } = fromKey(k); return { instance: i, name: n };
+    });
+    try { await saveBlocklist({ monitors: arr }); } catch {}
+    setHidden(next);
+  }
+  function onHide(i, n)      { const s = new Set(hidden); s.add(keyFor(i, n)); persistHidden(s); }
+  function onUnhide(i, n)    { const s = new Set(hidden); s.delete(keyFor(i, n)); persistHidden(s); }
+  function onHideAll(instance){ const s = new Set(hidden); filteredAll.filter((m)=>m.instance===instance).forEach((m)=>s.add(keyFor(m.instance, m.info?.monitor_name))); persistHidden(s); }
+  async function onUnhideAll(instance){
+    const bl = await getBlocklist();
+    const nextArr = (bl?.monitors ?? []).filter((k) => k.instance !== instance);
+    try { await saveBlocklist({ monitors: nextArr }); } catch {}
+    setHidden(new Set(nextArr.map((k) => keyFor(k.instance, k.name))));
+  }
+
+  // Navegación a una sede
+  function openInstance(name) { window.location.hash = "/sede/" + encodeURIComponent(name); }
+
+  // ===== Render =====
+  return (
+    <main>
+      {/* HERO principal con barra de búsqueda */}
+      <Hero
+        onSearch={(q) =>
+          setFilters((p) => ({
+            ...p,
+            q,
+          }))
+        }
+      />
+
+      <section className="home-services-section">
+        <div className="home-services-container">
+          <div className="container" data-route={route.name}>
+            {/* Fila superior: Nombre + Home + filtros */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <h1 style={{ margin: 0 }}>Thunder Detector</h1>
+
+                <button
+                  className="home-btn"
+                  type="button"
+                  onClick={() => { window.location.hash = ""; setAutoPlay(false); }}
+                  title="Ir al inicio"
+                >
+                  Home
+                </button>
+
+                <button
+                  className="home-btn"
+                  type="button"
+                  onClick={() => { window.location.hash = "/comparar"; setAutoPlay(false); }}
+                  title="Comparar servicio por sede"
+                >
+                  Comparar
+                </button>
+
+                <button
+                  className="home-btn"
+                  type="button"
+                  onClick={() => { window.location.hash = "/energia"; setAutoPlay(false); }}
+                  title="Vista de energia (ICMP)"
+                >
+                  Energia
+                </button>
+              </div>
+
+              {/* Controles: filtro por tipo + notificaciones + autoplay */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto", flexWrap: "wrap" }}>
+                {/* Filtro por tipo de servicio */}
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: "0.85rem",
+                    color: "#475569",
+                  }}
+                >
+                  <span>Tipo de servicio:</span>
+                  <select
+                    value={filters.type}
+                    onChange={(e) =>
+                      setFilters((p) => ({
+                        ...p,
+                        type: e.target.value,
+                      }))
+                    }
+                    style={{
+                      fontSize: "0.85rem",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                    }}
+                  >
+                    <option value="">Todos</option>
+                    {serviceTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* Botón Notificaciones ON/OFF */}
+                <button
+                  type="button"
+                  className={"k-btn k-btn--ghost" + (notificationsEnabled ? " is-active" : "")}
+                  onClick={() => setNotificationsEnabled((prev) => !prev)}
+                  style={{ fontSize: "0.8rem" }}
+                >
+                  Notificaciones: {notificationsEnabled ? "ON" : "OFF"}
+                </button>
+
+                {/* Toggle autoplay entre sedes (Home/Instancias) */}
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: "0.85rem",
+                    color: "#475569",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={autoPlay}
+                    onChange={() => setAutoPlay((prev) => !prev)}
+                  />
+                  <span>
+                    {autoPlay ? "Playlist activa" : "Playlist entre sedes"}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Alertas */}
+            <AlertsBanner
+              alerts={alerts}
+              onClose={(id) => setAlerts((a) => a.filter((x) => x.id !== id))}
+              autoCloseMs={ALERT_AUTOCLOSE_MS}
+            />
+
+            {/* Tarjetas de resumen (UP / DOWN / TOTAL / PROM) */}
+            <Cards
+              counts={headerCounts}
+              status={effectiveStatus}
+              onSetStatus={setStatus}
+            />
+
+            <SLAAlerts
+              monitors={filteredAll.filter((m) => !hidden.has(keyFor(m.instance, m.info?.monitor_name)))}
+              config={SLA_CONFIG}
+              onOpenInstance={openInstance}
+            />
+
+            {route.name === "sede" ? (
+              <div className="container">
+                <InstanceDetail
+                  instanceName={route.instance}
+                  monitorsAll={filteredAll}
+                  hiddenSet={hidden}
+                  onHide={onHide}
+                  onUnhide={onUnhide}
+                  onHideAll={onHideAll}
+                  onUnhideAll={onUnhideAll}
+                />
+              </div>
+            ) : route.name === "compare" ? (
+              <MultiServiceView monitorsAll={monitors} />
+            ) : route.name === "energia" ? (
+              <Energia monitorsAll={monitors} />
+            ) : (
+              // HOME: grid de instancias usando InstanceCard
+              <section
+                aria-label="Instancias monitoreadas"
+                className="service-grid instances-grid"
+              >
+                {instances.map((inst) => {
+                  const monitorsForInstance = monitorsByInstance.get(inst.name) || [];
+                  return (
+                    <InstanceCard
+                      key={inst.name}
+                      instance={inst}
+                      monitors={monitorsForInstance}
+                      onClick={openInstance}
+                    />
+                  );
+                })}
+              </section>
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

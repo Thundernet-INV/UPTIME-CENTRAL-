@@ -1,0 +1,37 @@
+=====================================================
+⚡ VISTA DE ENERGÍA - INSTRUCCIONES
+=====================================================
+
+📦 BACKUP CREADO: backupantesderompertodo_20260218_092311
+📅 FECHA: mié 18 feb 2026 09:23:12 -04
+
+📋 NUEVA FUNCIONALIDAD:
+   • Botón "⚡ Energía" en el menú principal
+   • Vista detallada con tarjetas por tipo de equipo
+   • Métricas UP/DOWN con colores y CLICK PARA VER DETALLES
+   • Uptime y latencia por categoría
+   • Lista de equipos con estado visual
+
+🎨 TIPOS DE EQUIPO Y COLORES:
+   • 🟦 PLANTAS      - Azul (#3b82f6)
+   • 🟧 AVR          - Naranja (#f59e0b)
+   • 🟪 CORPOELEC    - Púrpura (#8b5cf6)
+   • 🟩 INVERSORES   - Verde (#10b981)
+   • ⬜ OTROS        - Gris (#6b7280)
+
+🖱️ FUNCIONALIDADES INTERACTIVAS:
+   • Click en los números UP/DOWN/Issues → Muestra lista detallada
+   • Click en la barra de estado → Filtra por ese estado
+   • Click en cualquier equipo → Muestra ese grupo
+   • Modal con lista completa y estado individual
+
+🔄 PARA PROBAR:
+   1. Abre http://10.10.31.31:5173
+   2. Haz click en "⚡ Energía"
+   3. Haz click en cualquier número UP/DOWN para ver detalles
+   4. Los equipos se muestran con colores según su estado
+
+🔙 ROLLBACK SI ES NECESARIO:
+   ./rollback-energia.sh
+
+=====================================================

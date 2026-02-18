@@ -1,0 +1,215 @@
+// src/components/HistoryChart.jsx - VERSIÓN TEMPORAL CON DATOS DE EJEMPLO
+// ESTE ARCHIVO DEBE RENOMBRARSE A HistoryChart.jsx
+
+import React from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
+import { es } from 'date-fns/locale';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+// Generar datos de ejemplo para cuando no hay datos reales
+function generarDatosEjemplo() {
+  const points = [];
+  const now = Date.now();
+  const horaInicio = now - (24 * 60 * 60 * 1000); // 24 horas atrás
+  
+  for (let i = 0; i < 24; i++) {
+    const ts = horaInicio + (i * 60 * 60 * 1000);
+    const ms = 80 + Math.random() * 40;
+    points.push({
+      ts: ts,
+      ms: ms,
+      sec: ms / 1000,
+      x: ts,
+      y: ms / 1000
+    });
+  }
+  return points;
+}
+
+export default function HistoryChart({ 
+  mode = 'instance', 
+  series = {}, 
+  seriesMon = [], 
+  seriesMulti = [], 
+  title = 'Latencia (ms)',
+  h = 300,
+  options: customOptions = {}
+}) {
+  
+  // Verificar si hay datos reales
+  let hasRealData = false;
+  let chartData = { datasets: [] };
+  
+  if (mode === 'instance') {
+    // Modo INSTANCE - promedio de sede
+    const allSeries = Object.values(series).flat();
+    hasRealData = allSeries.length > 0;
+    
+    const data = hasRealData ? allSeries : generarDatosEjemplo();
+    
+    chartData = {
+      datasets: [{
+        label: hasRealData ? 'Promedio de sede' : 'Datos de ejemplo (sin datos reales)',
+        data: data.map(p => ({ x: p.ts || p.x, y: p.y || p.sec || p.ms/1000 })),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+      }]
+    };
+    
+  } else if (mode === 'monitor') {
+    // Modo MONITOR - servicio específico
+    hasRealData = seriesMon && seriesMon.length > 0;
+    const data = hasRealData ? seriesMon : generarDatosEjemplo();
+    
+    chartData = {
+      datasets: [{
+        label: hasRealData ? title : 'Datos de ejemplo (sin datos reales)',
+        data: data.map(p => ({ x: p.ts || p.x, y: p.y || p.sec || p.ms/1000 })),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+      }]
+    };
+    
+  } else if (mode === 'multi') {
+    // Modo MULTI - comparación
+    hasRealData = seriesMulti && seriesMulti.length > 0 && seriesMulti.some(s => s.points.length > 0);
+    
+    if (!hasRealData) {
+      // Generar datos de ejemplo para cada serie
+      chartData = {
+        datasets: seriesMulti.map((s, i) => ({
+          label: s.label,
+          data: generarDatosEjemplo().map(p => ({ x: p.ts, y: p.sec })),
+          borderColor: s.color || `hsl(${i * 30}, 70%, 50%)`,
+          backgroundColor: 'transparent',
+          tension: 0.3,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+        }))
+      };
+    } else {
+      chartData = {
+        datasets: seriesMulti.map(s => ({
+          label: s.label,
+          data: s.points.map(p => ({ x: p.ts || p.x, y: p.y || p.sec || p.ms/1000 })),
+          borderColor: s.color,
+          backgroundColor: 'transparent',
+          tension: 0.3,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+        }))
+      };
+    }
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: document.body.classList.contains('dark-mode') ? '#e5e7eb' : '#1f2937',
+        }
+      },
+      title: {
+        display: mode === 'monitor',
+        text: title,
+        color: document.body.classList.contains('dark-mode') ? '#e5e7eb' : '#1f2937',
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: 'hour',
+          displayFormats: { hour: 'HH:mm' },
+          tooltipFormat: 'dd/MM/yyyy HH:mm',
+        },
+        adapters: { date: { locale: es } },
+        grid: {
+          color: document.body.classList.contains('dark-mode') ? '#2d3238' : '#e5e7eb',
+        },
+        ticks: {
+          color: document.body.classList.contains('dark-mode') ? '#94a3b8' : '#6b7280',
+        }
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: document.body.classList.contains('dark-mode') ? '#2d3238' : '#e5e7eb',
+        },
+        ticks: {
+          color: document.body.classList.contains('dark-mode') ? '#94a3b8' : '#6b7280',
+          callback: (value) => `${value} s`,
+        },
+        title: {
+          display: true,
+          text: 'Latencia (segundos)',
+          color: document.body.classList.contains('dark-mode') ? '#94a3b8' : '#6b7280',
+        }
+      }
+    },
+    ...customOptions
+  };
+
+  return (
+    <div style={{ height: h, width: '100%', position: 'relative' }}>
+      {!hasRealData && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#f59e0b',
+          color: 'white',
+          padding: '4px 12px',
+          borderRadius: '20px',
+          fontSize: '12px',
+          zIndex: 10,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>
+          ⚠️ Mostrando datos de ejemplo (sin conexión al backend)
+        </div>
+      )}
+      <Line data={chartData} options={options} />
+    </div>
+  );
+}

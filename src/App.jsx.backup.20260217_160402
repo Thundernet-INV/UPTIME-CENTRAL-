@@ -1,0 +1,56 @@
+import React, { useEffect, useState } from "react";
+import Dashboard from "./views/Dashboard.jsx";
+import Equipos from "./views/Equipos.jsx";
+import "./styles.css";
+import "./dark-mode.css";
+
+function Tabs({ active, onChange }) {
+  const Item = ({ id, label }) => (
+    <button
+      type="button"
+      onClick={() => onChange(id)}
+      className="k-btn"
+      style={{
+        padding: "8px 14px",
+        borderRadius: "999px",
+        border: "1px solid var(--border, #e5e7eb)",
+        background: active === id ? "var(--info, #3b82f6)" : "transparent",
+        color: active === id ? "#fff" : "var(--text-primary, #1f2937)",
+        fontWeight: 600,
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "12px 0" }}>
+      <Item id="home" label="Dashboard" />
+      <Item id="equipos" label="Equipos" />
+    </div>
+  );
+}
+
+export default function App() {
+  const initial = typeof window !== "undefined" && location.hash === "#equipos" ? "equipos" : "home";
+  const [tab, setTab] = useState(initial);
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("uptime-theme");
+      if (savedTheme === "dark") document.body.classList.add("dark-mode");
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      location.hash = tab === "equipos" ? "#equipos" : "#home";
+    }
+  }, [tab]);
+
+  return (
+    <>
+      <Tabs active={tab} onChange={setTab} />
+      {tab === "equipos" ? <Equipos /> : <Dashboard />}
+    </>
+  );
+}
