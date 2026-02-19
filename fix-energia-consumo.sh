@@ -1,80 +1,90 @@
+#!/bin/bash
+# fix-energia-consumo.sh
+# AGREGA CONSUMO DE COMBUSTIBLE A LA VISTA ENERGIA
+
+echo "====================================================="
+echo "🔧 AGREGANDO CONSUMO A VISTA ENERGIA"
+echo "====================================================="
+
+FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
+ENERGIA_FILE="$FRONTEND_DIR/src/views/Energia.jsx"
+
+# ========== 1. HACER BACKUP ==========
+echo ""
+echo "[1] Creando backup..."
+cp "$ENERGIA_FILE" "$ENERGIA_FILE.backup.$(date +%Y%m%d_%H%M%S)"
+echo "✅ Backup creado"
+
+# ========== 2. MODIFICAR ENERGIA.JSX ==========
+echo ""
+echo "[2] Modificando Energia.jsx para mostrar consumo..."
+
+# Crear un nuevo componente de card con consumo
+sed -i '/{sec.items.map(({ raw, name }) => (/,/<\/div>/c\
+                {sec.items.map(({ raw, name }) => {\
+                  const nombreMonitor = raw.info?.monitor_name || name;\
+                  const saved = typeof window !== "undefined" ? localStorage.getItem("consumo_plantas") : null;\
+                  const data = saved ? JSON.parse(saved) : {};\
+                  const consumo = data[nombreMonitor] || { sesionActual: 0, historico: 0 };\
+                  const isUp = raw.latest?.status === 1;\
+                  \
+                  return (\
+                    <div\
+                      key={`${raw.instance ?? "?"}-${name}`}\
+                      className="k-card"\
+                      style={{ padding: 12, position: "relative" }}\
+                    >\
+                      <ServiceCard service={raw} series={[]} />\
+                      \
+                      {/* CONSUMO DE COMBUSTIBLE */}\
+                      {raw.info?.monitor_name?.startsWith("PLANTA") && (\
+                        <div style={{\
+                          marginTop: 8,\
+                          padding: "8px 12px",\
+                          background: isUp ? "#d1fae5" : "#f3f4f6",\
+                          borderRadius: 6,\
+                          display: "flex",\
+                          justifyContent: "space-between",\
+                          alignItems: "center",\
+                          fontSize: "0.8rem"\
+                        }}>\
+                          <span style={{ fontWeight: 600, color: isUp ? "#065f46" : "#4b5563" }}>\
+                            ⛽ Consumo\
+                          </span>\
+                          <span style={{ fontWeight: 700, color: isUp ? "#059669" : "#6b7280" }}>\
+                            {isUp ? `${consumo.sesionActual.toFixed(2)} L` : `${consumo.historico.toFixed(1)} L`}\
+                          </span>\
+                        </div>\
+                      )}\
+                    </div>\
+                  );\
+                })
+' "$ENERGIA_FILE"
+
+echo "✅ Consumo agregado a las cards"
+
+# ========== 3. CREAR COMPONENTE DE DETALLE CON CONSUMO ==========
+echo ""
+echo "[3] Creando componente de detalle con consumo..."
+
+# Buscar si existe un componente de detalle
+DETAIL_FILE="$FRONTEND_DIR/src/components/EnergiaDetail.jsx"
+
+if [ ! -f "$DETAIL_FILE" ]; then
+    # Crear el componente de detalle
+    cat > "$DETAIL_FILE" << 'EOF'
 import React, { useState, useEffect } from 'react';
 
 export default function EnergiaDetail({ monitor, onClose }) {
   const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
-  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
 
   useEffect(() => {
-  
-  // Actualizar consumo cada 2 segundos
-  useEffect(() => {
-    const actualizarConsumo = () => {
-      try {
-        const saved = localStorage.getItem("consumo_plantas");
-        if (saved) {
-          const data = JSON.parse(saved);
-          const nombre = monitor?.info?.monitor_name;
-          setConsumo(data[nombre] || { sesionActual: 0, historico: 0 });
-        }
-      } catch (e) {
-        console.error("Error actualizando consumo:", e);
-      }
-    };
-
-    actualizarConsumo();
-    const interval = setInterval(actualizarConsumo, 2000);
-    return () => clearInterval(interval);
-  }, [monitor]);
-  
-  // Cargar consumo inicial y actualizar cada 2 segundos
-  useEffect(() => {
-  
-  // Actualizar consumo cada 2 segundos
-  useEffect(() => {
-    const actualizarConsumo = () => {
-      try {
-        const saved = localStorage.getItem("consumo_plantas");
-        if (saved) {
-          const data = JSON.parse(saved);
-          const nombre = monitor?.info?.monitor_name;
-          setConsumo(data[nombre] || { sesionActual: 0, historico: 0 });
-        }
-      } catch (e) {
-        console.error("Error actualizando consumo:", e);
-      }
-    };
-
-    actualizarConsumo();
-    const interval = setInterval(actualizarConsumo, 2000);
-    return () => clearInterval(interval);
-  }, [monitor]);
-    const cargarConsumo = () => {
-      try {
-        const saved = localStorage.getItem("consumo_plantas");
-        if (saved) {
-          const data = JSON.parse(saved);
-          const nombre = monitor?.info?.monitor_name || monitor?.name;
-          setConsumo(data[nombre] || { sesionActual: 0, historico: 0 });
-        }
-      } catch (e) {
-        console.error("Error cargando consumo:", e);
-      }
-    };
-
-    cargarConsumo();
-    const interval = setInterval(cargarConsumo, 2000);
-    return () => clearInterval(interval);
-  }, [monitor]);
-  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
-  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
-    // Cargar consumo inicial
     const saved = localStorage.getItem('consumo_plantas');
     if (saved) {
       const data = JSON.parse(saved);
       setConsumo(data[monitor.info?.monitor_name] || { sesionActual: 0, historico: 0 });
     }
 
-    // Actualizar cada 2 segundos
     const interval = setInterval(() => {
       const updated = localStorage.getItem('consumo_plantas');
       if (updated) {
@@ -191,7 +201,7 @@ export default function EnergiaDetail({ monitor, onClose }) {
           </div>
         </div>
 
-        {/* SECCIÓN DE CONSUMO DE COMBUSTIBLE */}
+        {/* SECCIÓN DE CONSUMO */}
         <div style={{
           background: '#d1fae5',
           padding: 20,
@@ -209,11 +219,6 @@ export default function EnergiaDetail({ monitor, onClose }) {
               <div style={{ fontSize: '2rem', fontWeight: 700, color: '#065f46' }}>
                 {consumo.sesionActual.toFixed(2)} L
               </div>
-              {isUp && (
-                <div style={{ fontSize: '0.7rem', color: '#065f46', marginTop: 4 }}>
-                  Acumulado desde que encendió
-                </div>
-              )}
             </div>
             <div style={{ background: 'white', padding: 16, borderRadius: 8, textAlign: 'center' }}>
               <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: 4 }}>
@@ -221,9 +226,6 @@ export default function EnergiaDetail({ monitor, onClose }) {
               </div>
               <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1f2937' }}>
                 {consumo.historico.toFixed(1)} L
-              </div>
-              <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: 4 }}>
-                Total acumulado de todas las sesiones
               </div>
             </div>
           </div>
@@ -247,3 +249,50 @@ export default function EnergiaDetail({ monitor, onClose }) {
     </div>
   );
 }
+EOF
+
+    echo "✅ EnergiaDetail.jsx creado"
+fi
+
+# ========== 4. MODIFICAR SERVICE CARD PARA HACER CLICK ==========
+echo ""
+echo "[4] Haciendo las cards clickeables..."
+
+# Modificar el map para agregar onClick
+sed -i 's/<ServiceCard service={raw} series={[]} \/>/<div onClick={() => setSelectedMonitor(raw)} style={{ cursor: "pointer" }}>\n                        <ServiceCard service={raw} series={[]} \/>\n                      <\/div>/g' "$ENERGIA_FILE"
+
+# Agregar estado para monitor seleccionado después de los otros useState
+sed -i '/const \[q, setQ\] = useState("");/a \  const [selectedMonitor, setSelectedMonitor] = useState(null);' "$ENERGIA_FILE"
+
+# Agregar el modal al final del componente, antes del último </div>
+sed -i '/<\/div>$/ {
+  i \      {selectedMonitor && (\n        <EnergiaDetail\n          monitor={selectedMonitor}\n          onClose={() => setSelectedMonitor(null)}\n        />\n      )}
+}' "$ENERGIA_FILE"
+
+# Agregar import al principio
+sed -i '1i import EnergiaDetail from "../components/EnergiaDetail.jsx";' "$ENERGIA_FILE"
+
+echo "✅ Cards clickeables con detalle de consumo"
+
+# ========== 5. REINICIAR FRONTEND ==========
+echo ""
+echo "[5] Reiniciando frontend..."
+
+cd "$FRONTEND_DIR"
+pkill -f "vite" 2>/dev/null || true
+npm run dev &
+sleep 3
+
+echo "✅ Frontend reiniciado"
+
+echo ""
+echo "====================================================="
+echo "✅✅ CONSUMO AGREGADO A VISTA ENERGÍA ✅✅"
+echo "====================================================="
+echo ""
+echo "📊 AHORA EN LA VISTA ENERGÍA:"
+echo "   • Las cards de PLANTAS muestran el consumo actual"
+echo "   • Las cards son clickeables y abren detalle"
+echo "   • El detalle muestra consumo actual e histórico"
+echo "   • Los datos se actualizan en tiempo real"
+echo ""

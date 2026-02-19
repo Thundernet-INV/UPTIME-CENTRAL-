@@ -2,52 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 export default function EnergiaDetail({ monitor, onClose }) {
   const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
-  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
 
   useEffect(() => {
-  
-  // Actualizar consumo cada 2 segundos
-  useEffect(() => {
-    const actualizarConsumo = () => {
-      try {
-        const saved = localStorage.getItem("consumo_plantas");
-        if (saved) {
-          const data = JSON.parse(saved);
-          const nombre = monitor?.info?.monitor_name;
-          setConsumo(data[nombre] || { sesionActual: 0, historico: 0 });
-        }
-      } catch (e) {
-        console.error("Error actualizando consumo:", e);
-      }
-    };
-
-    actualizarConsumo();
-    const interval = setInterval(actualizarConsumo, 2000);
-    return () => clearInterval(interval);
-  }, [monitor]);
   
   // Cargar consumo inicial y actualizar cada 2 segundos
   useEffect(() => {
-  
-  // Actualizar consumo cada 2 segundos
-  useEffect(() => {
-    const actualizarConsumo = () => {
-      try {
-        const saved = localStorage.getItem("consumo_plantas");
-        if (saved) {
-          const data = JSON.parse(saved);
-          const nombre = monitor?.info?.monitor_name;
-          setConsumo(data[nombre] || { sesionActual: 0, historico: 0 });
-        }
-      } catch (e) {
-        console.error("Error actualizando consumo:", e);
-      }
-    };
-
-    actualizarConsumo();
-    const interval = setInterval(actualizarConsumo, 2000);
-    return () => clearInterval(interval);
-  }, [monitor]);
     const cargarConsumo = () => {
       try {
         const saved = localStorage.getItem("consumo_plantas");
@@ -65,7 +24,6 @@ export default function EnergiaDetail({ monitor, onClose }) {
     const interval = setInterval(cargarConsumo, 2000);
     return () => clearInterval(interval);
   }, [monitor]);
-  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
   const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
     // Cargar consumo inicial
     const saved = localStorage.getItem('consumo_plantas');

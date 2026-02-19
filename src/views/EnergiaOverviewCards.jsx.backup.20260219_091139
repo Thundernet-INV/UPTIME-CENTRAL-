@@ -1,28 +1,7 @@
 // src/views/EnergiaOverviewCards.jsx
 import React from 'react';
-n// Función para obtener consumo
-const getConsumo = (nombreMonitor) => {
-  if (typeof window === "undefined") return 0;
-  const saved = localStorage.getItem("consumo_plantas");
-  const data = saved ? JSON.parse(saved) : {};
-  return data[nombreMonitor]?.sesionActual || 0;
-};
 import { belongsToInstance, categoryOf, CATEGORY_LABEL, computeMetrics } from './Energia.metrics.helpers.js';
-n// Función para obtener consumo
-const getConsumo = (nombreMonitor) => {
-  if (typeof window === "undefined") return 0;
-  const saved = localStorage.getItem("consumo_plantas");
-  const data = saved ? JSON.parse(saved) : {};
-  return data[nombreMonitor]?.sesionActual || 0;
-};
 import './energia-cards-v5.css';
-n// Función para obtener consumo
-const getConsumo = (nombreMonitor) => {
-  if (typeof window === "undefined") return 0;
-  const saved = localStorage.getItem("consumo_plantas");
-  const data = saved ? JSON.parse(saved) : {};
-  return data[nombreMonitor]?.sesionActual || 0;
-};
 
 const ORDER = ['avr','corpoelec','plantas','inversor'];
 
@@ -73,30 +52,6 @@ export default function EnergiaOverviewCards({ items = [] }) {
               <div className="inst-uptime">Uptime estimado: <b>{metrics.uptime}%</b></div>
             </div>
             <div className="inst-footer">
-            {c === 'plantas' && (
-              <div style={{
-                marginTop: 8,
-                padding: "8px 12px",
-                background: "#d1fae5",
-                borderRadius: 6,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: "0.8rem"
-              }}>
-                <span style={{ fontWeight: 600, color: "#065f46" }}>⛽ Consumo Total</span>
-                <span style={{ fontWeight: 700, color: "#059669" }}>
-                  {(() => {
-                    let total = 0;
-                    byCat[c].forEach(item => {
-                      const nombre = item?.info?.monitor_name || item?.name;
-                      total += getConsumo(nombre);
-                    });
-                    return total.toFixed(2);
-                  })()} L
-                </span>
-              </div>
-            )}
             {isPlanta && (
               <div style={{
                 marginTop: 8,

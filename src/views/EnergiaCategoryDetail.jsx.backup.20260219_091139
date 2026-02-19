@@ -1,28 +1,7 @@
 // src/views/EnergiaCategoryDetail.jsx
 import React, { useMemo } from 'react';
-n// Función para obtener consumo
-const getConsumo = (nombreMonitor) => {
-  if (typeof window === "undefined") return { sesionActual: 0, historico: 0 };
-  const saved = localStorage.getItem("consumo_plantas");
-  const data = saved ? JSON.parse(saved) : {};
-  return data[nombreMonitor] || { sesionActual: 0, historico: 0 };
-};
 import { belongsToInstance, categoryOf, CATEGORY_LABEL, computeMetrics, getStatus } from './Energia.metrics.helpers.js';
-n// Función para obtener consumo
-const getConsumo = (nombreMonitor) => {
-  if (typeof window === "undefined") return { sesionActual: 0, historico: 0 };
-  const saved = localStorage.getItem("consumo_plantas");
-  const data = saved ? JSON.parse(saved) : {};
-  return data[nombreMonitor] || { sesionActual: 0, historico: 0 };
-};
 import './energia-cards-v5.css';
-n// Función para obtener consumo
-const getConsumo = (nombreMonitor) => {
-  if (typeof window === "undefined") return { sesionActual: 0, historico: 0 };
-  const saved = localStorage.getItem("consumo_plantas");
-  const data = saved ? JSON.parse(saved) : {};
-  return data[nombreMonitor] || { sesionActual: 0, historico: 0 };
-};
 
 let MultiServiceView = null;
 try {
@@ -59,17 +38,17 @@ export default function EnergiaCategoryDetail({ items = [], slug }) {
             const label = m?.name || m?.displayName || m?.title || m?.host || String(id);
             const st = getStatus(m);
             return (
-              <li key={id} className={`eq-item ${st}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px dashed rgba(125,125,125,.25)" }}>
+              <li key={id} className={`eq-item ${st}`}>
                 <span className={`dot ${st}`} />
-                <span className="label" style={{ flex: 1 }}>{label}</span>
+                <span className="label">{label}</span>
                 {slug === 'plantas' && (
                   <span style={{
+                    marginLeft: "auto",
+                    fontSize: "0.75rem",
                     padding: "2px 8px",
                     background: st === 'up' ? "#d1fae5" : "#f3f4f6",
                     borderRadius: 12,
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
-                    color: st === 'up' ? "#065f46" : "#4b5563"
+                    color: st === 'up' ? "#065f46" : "#6b7280"
                   }}>
                     {(() => {
                       const consumo = getConsumo(m?.info?.monitor_name || m?.name);

@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+        if (alive) setMonitors(Array.isArray(data?.monitors) ? data.monitors : []);
+      } catch (e) {        if (alive) setMonitors(Array.isArray(data?.monitors) ? data.monitors : []);
+      } catch (e) {import React, { useEffect, useMemo, useState } from "react";
 import { fetchAll } from "../api.js";
 import ServiceCard from "../components/ServiceCard.jsx";
 import { TIPOS_EQUIPO, normalizarTags, deducirTipoPorNombre } from "../lib/equiposConfig.js";
@@ -77,6 +79,41 @@ export default function Equipos() {
 
   return (
     <div style={{ padding: "24px" }}>
+              {/* BOTÓN FLOTANTE - ADMIN PLANTAS */}
+      <button
+        onClick={() => window.location.hash = '#/admin-plantas'}
+        style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '30px',
+          zIndex: 99999,
+          padding: '16px 28px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '60px',
+          cursor: 'pointer',
+          fontSize: '1.2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontWeight: 700,
+          boxShadow: '0 10px 25px rgba(102, 126, 234, 0.4)',
+          border: '2px solid white'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.boxShadow = '0 15px 30px rgba(102, 126, 234, 0.6)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 10px 25px rgba(102, 126, 234, 0.4)';
+        }}
+      >
+        <span style={{ fontSize: '2rem' }}>🔧</span><s
+        <span>ADMIN PLANTAS</span>
+      </button>
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <h2 className="k-card__title" style={{ margin: 0 }}>Equipos por Tipo y Etiquetas</h2>
         <input type="search" placeholder="Buscar por nombre o sede…" value={q}

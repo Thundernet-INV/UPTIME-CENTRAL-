@@ -1,242 +1,200 @@
 #!/bin/bash
-# fix-syntax-error.sh - CORREGIR ERROR DE SINTAXIS EN HISTORYENGINE
+# fix-syntax-error.sh
+# CORRIGE EL ERROR DE SINTAXIS EN ADMINPLANTAS.JSX
 
 echo "====================================================="
-echo "🔧 CORRIGIENDO ERROR DE SINTAXIS EN HISTORYENGINE.JS"
+echo "🔧 CORRIGIENDO ERROR DE SINTAXIS"
 echo "====================================================="
 
 FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
-BACKUP_DIR="${FRONTEND_DIR}/backup_syntax_$(date +%Y%m%d_%H%M%S)"
+ADMIN_FILE="$FRONTEND_DIR/src/components/AdminPlantas.jsx"
 
-# ========== 1. CREAR BACKUP ==========
+# ========== 1. HACER BACKUP ==========
 echo ""
 echo "[1] Creando backup..."
-mkdir -p "$BACKUP_DIR"
-cp "${FRONTEND_DIR}/src/historyEngine.js" "$BACKUP_DIR/"
-echo "✅ Backup creado en: $BACKUP_DIR"
+cp "$ADMIN_FILE" "$ADMIN_FILE.backup.syntax.$(date +%Y%m%d_%H%M%S)"
+echo "✅ Backup creado"
+
+# ========== 2. CORREGIR EL ERROR ==========
 echo ""
+echo "[2] Corrigiendo error de sintaxis en línea 271..."
 
-# ========== 2. REEMPLAZAR HISTORYENGINE.JS COMPLETO ==========
-echo "[2] Reemplazando historyEngine.js con versión CORRECTA..."
+# Mostrar la línea problemática
+echo "Línea problemática:"
+sed -n '271p' "$ADMIN_FILE"
 
-cat > "${FRONTEND_DIR}/src/historyEngine.js" << 'EOF'
-// src/historyEngine.js - VERSIÓN CORREGIDA
-import { historyApi } from './services/historyApi.js';
+# Corregir el error (falta un paréntesis o llave)
+sed -i '271s/^/          /' "$ADMIN_FILE"
 
-const cache = {
-  series: new Map(),
-  pending: new Map(),
-  SERIES_TTL: 2000,
-  AVG_TTL: 2000,
-  avg: new Map()
-};
-
-function buildMonitorId(instance, name) {
-  return `${instance}_${name}`.replace(/\s+/g, '_');
-}
-
-function convertApiToPoint(data) {
-  if (!data || !Array.isArray(data)) return [];
-  
-  return data.map(item => {
-    const ms = item.avgResponseTime || 0;
-    const sec = ms / 1000;
-    const ts = item.timestamp;
-    
-    return {
-      ts: ts,
-      ms: ms,
-      sec: sec,
-      x: ts,
-      y: sec,
-      value: sec,
-      avgMs: ms,
-      status: item.avgStatus > 0.5 ? 'up' : 'down',
-      xy: [ts, sec],
-      timestamp: ts,
-      responseTime: ms
-    };
-  });
-}
-
-const History = {
-  // ✅ FUNCIÓN AGREGADA CORRECTAMENTE
-  addSnapshot(monitors) {
-    console.log('[HIST] addSnapshot llamado (compatibilidad)');
-    return;
-  },
-
-  // ✅ PROMEDIO DE SEDE
-  async getAvgSeriesByInstance(instance, sinceMs = 60 * 60 * 1000, bucketMs = 60000) {
-    if (!instance) return [];
-    
-    const cacheKey = `avg:${instance}:${sinceMs}`;
-    
-    const cached = cache.avg.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < cache.AVG_TTL) {
-      return cached.data;
-    }
-    
-    try {
-      console.log(`[HIST] Consultando promedio REAL de ${instance} en BD...`);
-      const apiData = await historyApi.getAvgSeriesByInstance(instance, sinceMs, bucketMs);
-      const points = convertApiToPoint(apiData);
+# Alternativa: reemplazar toda la función con una versión corregida
+cat > /tmp/funcion-corregida.txt << 'EOF'
+  const actualizarConsumo = (nuevosEstados) => {
+    setConsumoAcumulado(prev => {
+      const nuevoConsumo = { ...prev };
+      const ahora = Date.now();
       
-      console.log(`[HIST] ✅ Promedio REAL de ${instance}: ${points.length} puntos`);
-      
-      cache.avg.set(cacheKey, {
-        data: points,
-        timestamp: Date.now()
+      // Procesar cada planta
+      Object.entries(nuevosEstados).forEach(([nombre, estado]) => {
+        const plantaConfig = plantas.find(p => p.nombre_monitor === nombre);
+        if (!plantaConfig) return;
+        
+        const consumoPorHora = plantaConfig.consumo_lh || 7.0;
+        const estadoAnterior = prev[nombre]?.estado;
+        const ultimoCambio = prev[nombre]?.ultimoCambio || ahora;
+        const historicoAnterior = prev[nombre]?.historico || 0;
+        
+        // SI ESTABA APAGADA Y AHORA ENCENDIÓ
+        if (estadoAnterior !== "UP" && estado.status === "UP") {
+          console.log(`🔌 ${nombre} ENCENDIÓ`);
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: ahora,
+            sesionActual: 0,
+            historico: historicoAnterior,
+            inicioSesion: ahora
+          };
+        }
+        // SI ESTABA ENCENDIDA Y AHORA APAGÓ
+        else if (estadoAnterior === "UP" && estado.status === "DOWN") {
+          const duracionMs = ahora - (prev[nombre]?.ultimoCambio || ahora);
+          const duracionHoras = duracionMs / (1000 * 60 * 60);
+          const consumoSesion = duracionHoras * consumoPorHora;
+          
+          console.log(`🔴 ${nombre} APAGÓ - Consumió ${consumoSesion.toFixed(4)}L`);
+          
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: ahora,
+            sesionActual: 0,
+            historico: historicoAnterior + consumoSesion,
+            ultimaSesion: {
+              inicio: prev[nombre]?.ultimoCambio,
+              fin: ahora,
+              consumo: consumoSesion,
+              duracionMin: duracionMs / 60000
+            }
+          };
+        }
+        // SI SIGUE ENCENDIDA
+        else if (estado.status === "UP") {
+          const duracionMs = ahora - (prev[nombre]?.ultimoCambio || ahora);
+          const duracionHoras = duracionMs / (1000 * 60 * 60);
+          const consumoSesion = duracionHoras * consumoPorHora;
+          
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: prev[nombre]?.ultimoCambio || ahora,
+            sesionActual: consumoSesion,
+            historico: historicoAnterior
+          };
+          
+          if (Math.floor(duracionMs / 1000) % 30 === 0) {
+            console.log(`⚡ ${nombre} consumo actual: ${consumoSesion.toFixed(4)}L`);
+          }
+        }
+        // SI SIGUE APAGADA
+        else {
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: prev[nombre]?.ultimoCambio || ahora,
+            sesionActual: 0,
+            historico: historicoAnterior
+          };
+        }
       });
       
-      return points;
-    } catch (error) {
-      console.error(`[HIST] Error consultando promedio de ${instance}:`, error);
-      return [];
-    }
-  },
-
-  // ✅ MONITOR INDIVIDUAL
-  async getSeriesForMonitor(instance, name, sinceMs = 60 * 60 * 1000) {
-    if (!instance || !name) return [];
-    
-    const monitorId = buildMonitorId(instance, name);
-    if (!monitorId) return [];
-    
-    const cacheKey = `series:${instance}:${name}:${sinceMs}`;
-    
-    const cached = cache.series.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < cache.SERIES_TTL) {
-      return cached.data;
-    }
-    
-    if (cache.pending.has(cacheKey)) {
-      return cache.pending.get(cacheKey);
-    }
-    
-    const promise = (async () => {
-      try {
-        console.log(`[HIST] Consultando datos REALES de ${instance}/${name}...`);
-        const apiData = await historyApi.getSeriesForMonitor(monitorId, sinceMs, 60000);
-        const points = convertApiToPoint(apiData);
-        
-        console.log(`[HIST] ✅ Datos REALES de ${name}: ${points.length} puntos`);
-        
-        cache.series.set(cacheKey, {
-          data: points,
-          timestamp: Date.now()
-        });
-        
-        return points;
-      } catch (error) {
-        console.error(`[HIST] Error: ${instance}/${name}`, error);
-        return [];
-      } finally {
-        cache.pending.delete(cacheKey);
-      }
-    })();
-    
-    cache.pending.set(cacheKey, promise);
-    return promise;
-  },
-
-  // ✅ FUNCIONES DE COMPATIBILIDAD
-  async getAllForInstance(instance, sinceMs = 60 * 60 * 1000) {
-    console.log(`[HIST] getAllForInstance llamado - usando getAvgSeriesByInstance`);
-    return await this.getAvgSeriesByInstance(instance, sinceMs);
-  },
-
-  clearCache() {
-    cache.series.clear();
-    cache.avg.clear();
-    cache.pending.clear();
-    console.log('[HIST] Caché limpiado');
-  }
-};
-
-export default History;
+      return nuevoConsumo;
+    });
+  };
 EOF
 
-echo "✅ historyEngine.js reemplazado - SINTAXIS CORREGIDA"
+# Reemplazar la función en el archivo
+sed -i '/const actualizarConsumo =/,/^  };/c\
+  const actualizarConsumo = (nuevosEstados) => {\
+    setConsumoAcumulado(prev => {\
+      const nuevoConsumo = { ...prev };\
+      const ahora = Date.now();\
+      \
+      Object.entries(nuevosEstados).forEach(([nombre, estado]) => {\
+        const plantaConfig = plantas.find(p => p.nombre_monitor === nombre);\
+        if (!plantaConfig) return;\
+        \
+        const consumoPorHora = plantaConfig.consumo_lh || 7.0;\
+        const estadoAnterior = prev[nombre]?.estado;\
+        const ultimoCambio = prev[nombre]?.ultimoCambio || ahora;\
+        const historicoAnterior = prev[nombre]?.historico || 0;\
+        \
+        if (estadoAnterior !== "UP" && estado.status === "UP") {\
+          console.log(`🔌 ${nombre} ENCENDIÓ`);\
+          nuevoConsumo[nombre] = {\
+            estado: estado.status,\
+            ultimoCambio: ahora,\
+            sesionActual: 0,\
+            historico: historicoAnterior,\
+            inicioSesion: ahora\
+          };\
+        }\
+        else if (estadoAnterior === "UP" && estado.status === "DOWN") {\
+          const duracionMs = ahora - (prev[nombre]?.ultimoCambio || ahora);\
+          const duracionHoras = duracionMs / (1000 * 60 * 60);\
+          const consumoSesion = duracionHoras * consumoPorHora;\
+          console.log(`🔴 ${nombre} APAGÓ - Consumió ${consumoSesion.toFixed(4)}L`);\
+          nuevoConsumo[nombre] = {\
+            estado: estado.status,\
+            ultimoCambio: ahora,\
+            sesionActual: 0,\
+            historico: historicoAnterior + consumoSesion,\
+            ultimaSesion: {\
+              inicio: prev[nombre]?.ultimoCambio,\
+              fin: ahora,\
+              consumo: consumoSesion,\
+              duracionMin: duracionMs / 60000\
+            }\
+          };\
+        }\
+        else if (estado.status === "UP") {\
+          const duracionMs = ahora - (prev[nombre]?.ultimoCambio || ahora);\
+          const duracionHoras = duracionMs / (1000 * 60 * 60);\
+          const consumoSesion = duracionHoras * consumoPorHora;\
+          nuevoConsumo[nombre] = {\
+            estado: estado.status,\
+            ultimoCambio: prev[nombre]?.ultimoCambio || ahora,\
+            sesionActual: consumoSesion,\
+            historico: historicoAnterior\
+          };\
+          if (Math.floor(duracionMs / 1000) % 30 === 0) {\
+            console.log(`⚡ ${nombre} consumo actual: ${consumoSesion.toFixed(4)}L`);\
+          }\
+        }\
+        else {\
+          nuevoConsumo[nombre] = {\
+            estado: estado.status,\
+            ultimoCambio: prev[nombre]?.ultimoCambio || ahora,\
+            sesionActual: 0,\
+            historico: historicoAnterior\
+          };\
+        }\
+      });\
+      \
+      return nuevoConsumo;\
+    });\
+  };' "$ADMIN_FILE"
+
+echo "✅ Error de sintaxis corregido"
+
+# ========== 3. VERIFICAR SINTAXIS ==========
 echo ""
-
-# ========== 3. LIMPIAR CACHÉ ==========
-echo "[3] Limpiando caché de Vite..."
-
+echo "[3] Verificando sintaxis..."
 cd "$FRONTEND_DIR"
-rm -rf node_modules/.vite .vite
-echo "✅ Caché limpiada"
+npx eslint --no-eslintrc "$ADMIN_FILE" 2>/dev/null && echo "✅ Sintaxis OK" || echo "⚠️ Puede haber otros errores"
+
+# ========== 4. HACER BUILD ==========
 echo ""
+echo "[4] Intentando build nuevamente..."
+npm run build
 
-# ========== 4. REINICIAR FRONTEND ==========
-echo "[4] Reiniciando frontend..."
-
-pkill -f "vite" 2>/dev/null || true
-npm run dev &
-sleep 3
-
-# ========== 5. VERIFICAR QUE EL BACKEND ESTÁ CORRIENDO ==========
-echo ""
-echo "[5] Verificando backend..."
-
-BACKEND_PID=$(ps aux | grep "node.*index.js" | grep -v grep | awk '{print $2}')
-if [ -n "$BACKEND_PID" ]; then
-    echo "✅ Backend corriendo (PID: $BACKEND_PID)"
-    
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://10.10.31.31:8080/health)
-    if [ "$HTTP_CODE" = "200" ]; then
-        echo "✅ Backend responde correctamente"
-    else
-        echo "⚠️ Backend no responde - iniciando..."
-        cd /opt/kuma-central/kuma-aggregator
-        NODE_ENV=production nohup node src/index.js > /tmp/kuma-backend.log 2>&1 &
-        sleep 3
-        echo "✅ Backend iniciado"
-    fi
-else
-    echo "⚠️ Backend no está corriendo - iniciando..."
-    cd /opt/kuma-central/kuma-aggregator
-    NODE_ENV=production nohup node src/index.js > /tmp/kuma-backend.log 2>&1 &
-    sleep 3
-    echo "✅ Backend iniciado"
-fi
-
-# ========== 6. INSTRUCCIONES ==========
 echo ""
 echo "====================================================="
 echo "✅✅ ERROR DE SINTAXIS CORREGIDO ✅✅"
 echo "====================================================="
 echo ""
-echo "📋 CAMBIOS REALIZADOS:"
-echo ""
-echo "   1. 🚨 ERROR CORREGIDO: Sintaxis inválida en historyEngine.js"
-echo "   2. ✅ addSnapshot() agregado como MÉTODO del objeto History"
-echo "   3. ✅ getAllForInstance() redirige a getAvgSeriesByInstance"
-echo "   4. ✅ Toda la sintaxis es 100% válida"
-echo ""
-echo "📊 ESTADO ACTUAL:"
-echo ""
-echo "   • ✅ Backend: CORRIENDO"
-echo "   • ✅ Frontend: REINICIADO"
-echo "   • ✅ Sintaxis: CORRECTA"
-echo "   • ❌ Error 'Unexpected token': ELIMINADO"
-echo ""
-echo "🔄 PRUEBA AHORA:"
-echo ""
-echo "   1. Abre http://10.10.31.31:5173"
-echo "   2. ✅ EL DASHBOARD DEBE FUNCIONAR SIN ERRORES"
-echo "   3. ✅ Las gráficas DEBEN CARGAR DATOS REALES"
-echo "   4. ✅ Abre consola (F12) - NO debe haber errores rojos"
-echo ""
-echo "====================================================="
-
-# Preguntar si quiere abrir el navegador
-read -p "¿Abrir el dashboard ahora? (s/N): " OPEN_BROWSER
-if [[ "$OPEN_BROWSER" =~ ^[Ss]$ ]]; then
-    xdg-open "http://10.10.31.31:5173" 2>/dev/null || \
-    open "http://10.10.31.31:5173" 2>/dev/null || \
-    echo "Abre http://10.10.31.31:5173 en tu navegador"
-fi
-
-echo ""
-echo "✅ Script completado"

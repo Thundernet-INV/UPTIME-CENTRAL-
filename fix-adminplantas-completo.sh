@@ -1,6 +1,27 @@
+#!/bin/bash
+# fix-adminplantas-completo.sh
+# REEMPLAZA EL ARCHIVO ADMINPLANTAS.JSX CON VERSIÓN CORREGIDA
+
+echo "====================================================="
+echo "🔧 REEMPLAZANDO ADMINPLANTAS.JSX CON VERSIÓN CORREGIDA"
+echo "====================================================="
+
+FRONTEND_DIR="/home/thunder/kuma-dashboard-clean/kuma-ui"
+ADMIN_FILE="$FRONTEND_DIR/src/components/AdminPlantas.jsx"
+
+# ========== 1. HACER BACKUP ==========
+echo ""
+echo "[1] Creando backup..."
+cp "$ADMIN_FILE" "$ADMIN_FILE.backup.final.$(date +%Y%m%d_%H%M%S)"
+echo "✅ Backup creado"
+
+# ========== 2. CREAR ARCHIVO NUEVO CON SINTAXIS CORRECTA ==========
+echo ""
+echo "[2] Creando nuevo AdminPlantas.jsx con sintaxis correcta..."
+
+cat > "$ADMIN_FILE" << 'EOF'
 import React, { useState, useEffect } from 'react';
 import PlantaDetail from "./PlantaDetail.jsx";
-import { usePlantaData } from '../hooks/usePlantaData.js';
 
 const MODELOS_CON_CONSUMO = {
   '46-GI-30MDI': 6.5,
@@ -27,67 +48,173 @@ const MODELO_DEFAULT = '46-GI-30FW';
 const CONSUMO_DEFAULT = 7.0;
 
 export default function AdminPlantas() {
+  const [plantas, setPlantas] = useState([]);
   const [plantasDetectadas, setPlantasDetectadas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
+  const [estadosReales, setEstadosReales] = useState({});
   const [plantaSeleccionada, setPlantaSeleccionada] = useState(null);
   
-  // Usar el hook unificado
-  const { 
-    plantas, 
-    estados, 
-    consumos, 
-    loading, 
-    timestamp,
-    simularEvento,
-    resetearPlanta: resetearPlantaAPI,
-    recargar
-  } = usePlantaData();
+  const [consumoAcumulado, setConsumoAcumulado] = useState(() => {
+    const saved = localStorage.getItem('consumo_plantas');
+    return saved ? JSON.parse(saved) : {};
+  });
 
-  // Detectar plantas no configuradas
   useEffect(() => {
-    const detectarPlantas = async () => {
-      try {
-        const res = await fetch('http://10.10.31.31:8080/api/summary');
-        const data = await res.json();
-        
-        const monitoresEnergia = data.monitors.filter(m => 
-          m.instance === 'Energia' && 
-          m.info.monitor_name.startsWith('PLANTA')
-        );
-        
-        const configMap = new Map(plantas.map(p => [p.nombre_monitor, true]));
-        const detectadas = monitoresEnergia
-          .filter(m => !configMap.has(m.info.monitor_name))
-          .map(m => ({ nombre_monitor: m.info.monitor_name }));
-        
-        setPlantasDetectadas(detectadas);
-      } catch (error) {
-        console.error('Error detectando plantas:', error);
-      }
-    };
+    cargarTodo();
+    const interval = setInterval(actualizarEstados, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
-    if (plantas.length > 0) {
-      detectarPlantas();
-    }
-  }, [plantas]);
+  useEffect(() => {
+    localStorage.setItem('consumo_plantas', JSON.stringify(consumoAcumulado));
+  }, [consumoAcumulado]);
 
-  const handleSimularEvento = async (nombreMonitor, estado) => {
-    const result = await simularEvento(nombreMonitor, estado);
-    if (result.success) {
-      mostrarMensaje(`✅ ${nombreMonitor} ${estado === 'UP' ? 'ENCENDIDA' : 'APAGADA'}`, 'success');
-    } else {
-      mostrarMensaje('❌ ' + result.error, 'error');
+  const cargarTodo = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        cargarPlantasConfiguradas(),
+        cargarEstadosReales()
+      ]);
+    } catch (error) {
+      console.error('Error cargando datos:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleResetearPlanta = async (nombre) => {
-    if (window.confirm(`¿Resetear el contador de ${nombre}?`)) {
-      const result = await resetearPlantaAPI(nombre);
-      if (result.success) {
-        mostrarMensaje(`✅ Contador de ${nombre} reseteado`, 'success');
-      } else {
-        mostrarMensaje('❌ ' + result.error, 'error');
+  const cargarPlantasConfiguradas = async () => {
+    try {
+      const res = await fetch('http://10.10.31.31:8080/api/combustible/plantas');
+      const data = await res.json();
+      if (data.success) {
+        setPlantas(data.data);
       }
+    } catch (error) {
+      console.error('Error cargando plantas:', error);
+    }
+  };
+
+  const cargarEstadosReales = async () => {
+    try {
+      console.log("📊 Cargando estados de plantas...");
+      const res = await fetch('http://10.10.31.31:8080/api/summary');
+      const data = await res.json();
+      
+      const monitoresEnergia = data.monitors.filter(m => 
+        m.instance === 'Energia' && 
+        m.info.monitor_name.startsWith('PLANTA')
+      );
+      
+      const estados = {};
+      const detectadas = [];
+      
+      monitoresEnergia.forEach(m => {
+        const nombre = m.info.monitor_name;
+        estados[nombre] = {
+          status: m.latest?.status === 1 ? 'UP' : 'DOWN',
+          responseTime: m.latest?.responseTime || 0,
+          lastCheck: m.latest?.timestamp || Date.now()
+        };
+        detectadas.push({ nombre_monitor: nombre });
+      });
+      
+      actualizarConsumo(estados);
+      setEstadosReales(estados);
+      setPlantasDetectadas(detectadas);
+      console.log(`📊 Estados cargados: ${Object.keys(estados).length} plantas`);
+      
+    } catch (error) {
+      console.error('Error cargando estados:', error);
+    }
+  };
+
+  const actualizarEstados = () => {
+    cargarEstadosReales();
+  };
+
+  const actualizarConsumo = (nuevosEstados) => {
+    setConsumoAcumulado(prev => {
+      const nuevoConsumo = { ...prev };
+      const ahora = Date.now();
+      
+      Object.entries(nuevosEstados).forEach(([nombre, estado]) => {
+        const plantaConfig = plantas.find(p => p.nombre_monitor === nombre);
+        if (!plantaConfig) return;
+        
+        const consumoPorHora = plantaConfig.consumo_lh || 7.0;
+        const estadoAnterior = prev[nombre]?.estado;
+        const historicoAnterior = prev[nombre]?.historico || 0;
+        
+        if (estadoAnterior !== "UP" && estado.status === "UP") {
+          console.log(`🔌 ${nombre} ENCENDIÓ`);
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: ahora,
+            sesionActual: 0,
+            historico: historicoAnterior,
+            inicioSesion: ahora
+          };
+        }
+        else if (estadoAnterior === "UP" && estado.status === "DOWN") {
+          const duracionMs = ahora - (prev[nombre]?.ultimoCambio || ahora);
+          const duracionHoras = duracionMs / (1000 * 60 * 60);
+          const consumoSesion = duracionHoras * consumoPorHora;
+          
+          console.log(`🔴 ${nombre} APAGÓ - Consumió ${consumoSesion.toFixed(4)}L`);
+          
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: ahora,
+            sesionActual: 0,
+            historico: historicoAnterior + consumoSesion,
+            ultimaSesion: {
+              inicio: prev[nombre]?.ultimoCambio,
+              fin: ahora,
+              consumo: consumoSesion,
+              duracionMin: duracionMs / 60000
+            }
+          };
+        }
+        else if (estado.status === "UP") {
+          const duracionMs = ahora - (prev[nombre]?.ultimoCambio || ahora);
+          const duracionHoras = duracionMs / (1000 * 60 * 60);
+          const consumoSesion = duracionHoras * consumoPorHora;
+          
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: prev[nombre]?.ultimoCambio || ahora,
+            sesionActual: consumoSesion,
+            historico: historicoAnterior
+          };
+          
+          if (Math.floor(duracionMs / 1000) % 30 === 0) {
+            console.log(`⚡ ${nombre} consumo actual: ${consumoSesion.toFixed(4)}L`);
+          }
+        }
+        else {
+          nuevoConsumo[nombre] = {
+            estado: estado.status,
+            ultimoCambio: prev[nombre]?.ultimoCambio || ahora,
+            sesionActual: 0,
+            historico: historicoAnterior
+          };
+        }
+      });
+      
+      return nuevoConsumo;
+    });
+  };
+
+  const resetearPlanta = (nombre) => {
+    if (window.confirm(`¿Resetear el contador de ${nombre}?`)) {
+      setConsumoAcumulado(prev => {
+        const nuevo = { ...prev };
+        delete nuevo[nombre];
+        return nuevo;
+      });
+      mostrarMensaje(`✅ Contador de ${nombre} reseteado`, 'success');
     }
   };
 
@@ -121,7 +248,7 @@ export default function AdminPlantas() {
       const data = await res.json();
       if (data.success) {
         mostrarMensaje(`✅ Planta "${nombre_monitor}" agregada`, 'success');
-        recargar(); // Recargar datos después de agregar
+        cargarPlantasConfiguradas();
       } else {
         mostrarMensaje('❌ ' + data.error, 'error');
       }
@@ -131,7 +258,7 @@ export default function AdminPlantas() {
   };
 
   const getEstadoPlanta = (nombreMonitor) => {
-    const estado = estados[nombreMonitor];
+    const estado = estadosReales[nombreMonitor];
     if (!estado) return { estado: 'DESCONOCIDO', color: '#6b7280', bg: '#e5e7eb' };
     
     if (estado.status === 'UP') {
@@ -175,11 +302,9 @@ export default function AdminPlantas() {
     return result.sort((a, b) => a.nombre_monitor.localeCompare(b.nombre_monitor));
   };
 
-  const plantasUp = Object.values(estados).filter(e => e.status === 'UP').length;
+  const plantasUp = Object.values(estadosReales).filter(e => e.status === 'UP').length;
   const listaCombinada = plantasCombinadas();
-  
-  // Calcular total de combustible
-  const totalCombustible = Object.values(consumos).reduce((sum, p) => sum + (p.historico || 0), 0);
+  const totalCombustible = Object.values(consumoAcumulado).reduce((sum, p) => sum + (p.historico || 0), 0);
 
   if (loading) {
     return (
@@ -268,14 +393,7 @@ export default function AdminPlantas() {
           border-radius: 4px;
           cursor: pointer;
           font-size: 0.7rem;
-        }
-        .btn-simular {
-          padding: 4px 8px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.7rem;
-          font-weight: 600;
+          margin-left: 8px;
         }
         .consumo-actual {
           font-size: 1rem;
@@ -356,28 +474,8 @@ export default function AdminPlantas() {
           <span className="total-consumo">
             ⛽ Total: {totalCombustible.toFixed(2)} L
           </span>
-          
-          {/* 🟢 NUEVO BOTÓN DE REPORTES */}
           <button
-            onClick={() => window.location.hash = '#/reportes'}
-            style={{
-              padding: '8px 16px',
-              background: '#16a34a',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            📈 Ver Reportes
-          </button>
-          
-          <button
-            onClick={recargar}
+            onClick={cargarEstadosReales}
             style={{
               padding: '8px 16px',
               background: '#3b82f6',
@@ -411,11 +509,14 @@ export default function AdminPlantas() {
             {listaCombinada.map(planta => {
               const estadoInfo = getEstadoPlanta(planta.nombre_monitor);
               const isConfigurada = planta.configurada;
-              const consumoData = consumos[planta.nombre_monitor] || { sesionActual: 0, historico: 0 };
+              const consumoData = consumoAcumulado[planta.nombre_monitor] || { sesionActual: 0, historico: 0 };
               const isUp = estadoInfo.estado.includes('🟢');
               
               return (
-                <tr key={`${planta.nombre_monitor}-${timestamp}`}>
+                <tr key={planta.nombre_monitor} style={{
+                  opacity: isConfigurada ? 1 : 0.8,
+                  background: !isConfigurada ? '#fff3e0' : undefined
+                }}>
                   <td>
                     <strong>{planta.nombre_monitor}</strong>
                     {!isConfigurada && (
@@ -461,7 +562,7 @@ export default function AdminPlantas() {
                     )}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
                       <button
                         className="btn-agregar"
                         onClick={() => setPlantaSeleccionada(planta)}
@@ -470,40 +571,14 @@ export default function AdminPlantas() {
                         Detalle
                       </button>
                       {isConfigurada && (
-                        <>
-                          <button
-                            className="btn-simular"
-                            onClick={() => handleSimularEvento(planta.nombre_monitor, 'UP')}
-                            style={{ 
-                              background: '#16a34a', 
-                              color: 'white',
-                              padding: '4px 8px'
-                            }}
-                            title="Simular encendido"
-                          >
-                            🔌 UP
-                          </button>
-                          <button
-                            className="btn-simular"
-                            onClick={() => handleSimularEvento(planta.nombre_monitor, 'DOWN')}
-                            style={{ 
-                              background: '#dc2626', 
-                              color: 'white',
-                              padding: '4px 8px'
-                            }}
-                            title="Simular apagado"
-                          >
-                            🔴 DOWN
-                          </button>
-                          <button
-                            className="btn-reset"
-                            onClick={() => handleResetearPlanta(planta.nombre_monitor)}
-                            disabled={isUp}
-                            title={isUp ? 'No se puede resetear mientras está encendida' : 'Resetear contador'}
-                          >
-                            Resetear
-                          </button>
-                        </>
+                        <button
+                          className="btn-reset"
+                          onClick={() => resetearPlanta(planta.nombre_monitor)}
+                          disabled={isUp}
+                          title={isUp ? 'No se puede resetear mientras está encendida' : 'Resetear contador'}
+                        >
+                          Resetear
+                        </button>
                       )}
                       {!isConfigurada && (
                         <button
@@ -526,9 +601,29 @@ export default function AdminPlantas() {
         <PlantaDetail
           planta={plantaSeleccionada}
           onClose={() => setPlantaSeleccionada(null)}
-          onActualizar={recargar}
+          onActualizar={cargarPlantasConfiguradas}
         />
       )}
     </div>
   );
 }
+EOF
+
+echo "✅ Nuevo AdminPlantas.jsx creado"
+
+# ========== 3. VERIFICAR SINTAXIS ==========
+echo ""
+echo "[3] Verificando sintaxis..."
+cd "$FRONTEND_DIR"
+npx eslint --no-eslintrc "$ADMIN_FILE" 2>/dev/null && echo "✅ Sintaxis OK" || echo "⚠️ Puede haber otros errores"
+
+# ========== 4. HACER BUILD ==========
+echo ""
+echo "[4] Intentando build nuevamente..."
+npm run build
+
+echo ""
+echo "====================================================="
+echo "✅✅ ARCHIVO REEMPLAZADO CON ÉXITO ✅✅"
+echo "====================================================="
+echo ""

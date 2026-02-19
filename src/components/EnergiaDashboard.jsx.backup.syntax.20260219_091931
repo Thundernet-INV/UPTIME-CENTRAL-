@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 
 // ========== CONFIGURACIÓN DE TIPOS DE EQUIPO ==========
 const TIPOS_EQUIPO = {
@@ -76,7 +76,7 @@ function calcularMetricas(monitores) {
 }
 
 // ========== COMPONENTE DE TARJETA DE EQUIPO ==========
-function EquipoCard({ equipo, onClick, isSelected, consumoData }) {
+function EquipoCard({ equipo, onClick, isSelected }) {
   const latest = equipo.latest || {};
   const status = latest.status === 1 ? 'up' : 'down';
   const rt = latest.responseTime;
@@ -123,38 +123,19 @@ function EquipoCard({ equipo, onClick, isSelected, consumoData }) {
           {rt} ms
         </div>
       )}
-      {/* CONSUMO DE COMBUSTIBLE - SOLO PARA PLANTAS */}
-      {tipo === 'PLANTA' && consumoData && (
-        <div style={{
-          marginTop: '8px',
-          padding: '4px 8px',
-          background: status === 'up' ? '#d1fae5' : '#f3f4f6',
-          borderRadius: '4px',
-          fontSize: '0.75rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>⛽ Consumo</span>
-          <span style={{ fontWeight: 600, color: status === 'up' ? '#065f46' : '#4b5563' }}>
-            {status === 'up' 
-              ? `${consumoData.consumo_actual_sesion?.toFixed(2) || '0.00'}L` 
-              : `${consumoData.consumo_total_historico?.toFixed(1) || '0.0'}L`}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
 
 // ========== COMPONENTE DE TARJETA DE TIPO ==========
-function TipoCard({ tipo, monitores, metricas, filtroActivo, onEquipoClick, equipoSeleccionado, consumosMap }) {
+function TipoCard({ tipo, monitores, metricas, filtroActivo, onEquipoClick, equipoSeleccionado }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
   const config = TIPOS_EQUIPO[tipo] || { 
     nombre: tipo, 
     color: '#6b7280', 
     bg: '#f3f4f6', 
-    icon: '',
+    icon: '📦',
     desc: 'Otros equipos'
   };
   
@@ -258,7 +239,6 @@ function TipoCard({ tipo, monitores, metricas, filtroActivo, onEquipoClick, equi
                 equipo={monitor}
                 onClick={onEquipoClick}
                 isSelected={equipoSeleccionado?.info?.monitor_name === monitor.info?.monitor_name}
-                consumoData={consumosMap[monitor.info?.monitor_name]}
               />
             ))}
           </div>
@@ -269,7 +249,7 @@ function TipoCard({ tipo, monitores, metricas, filtroActivo, onEquipoClick, equi
 }
 
 // ========== COMPONENTE DE DETALLE DE EQUIPO ==========
-function DetalleEquipo({ equipo, onClose, consumoData }) {
+function DetalleEquipo({ equipo, onClose }) {
   if (!equipo) return null;
 
   const latest = equipo.latest || {};
@@ -388,47 +368,40 @@ function DetalleEquipo({ equipo, onClose, consumoData }) {
           </div>
         </div>
 
-        {/* SECCIÓN DE CONSUMO - SOLO PARA PLANTAS */}
-        {tipo === 'PLANTA' && consumoData && (
-          <div style={{
-            background: '#d1fae5',
-            padding: '20px',
-            borderRadius: '12px',
-            marginBottom: '16px'
-          }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#065f46' }}>
-              ⛽ CONSUMO DE COMBUSTIBLE
-            </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ background: 'white', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '4px' }}>
-                  Consumo Actual (Sesión)
-                </div>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#065f46' }}>
-                  {consumoData.consumo_actual_sesion?.toFixed(2) || '0.00'} L
-                </div>
-                {status === 'up' && (
-                  <div style={{ fontSize: '0.7rem', color: '#065f46', marginTop: '4px' }}>
-                    Acumulado desde que encendió
-                  </div>
-                )}
-              </div>
-              <div style={{ background: 'white', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '4px' }}>
-                  Consumo Histórico Total
-                </div>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1f2937' }}>
-                  {consumoData.consumo_total_historico?.toFixed(1) || '0.0'} L
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div style={{
           padding: '20px',
           background: '#f3f4f6',
           borderRadius: '12px'
+n        {/* SECCIÓN DE CONSUMO */}
+        <div style={{ background: "#d1fae5", padding: 20, borderRadius: 12, marginBottom: 16 }}>
+          <h4 style={{ margin: "0 0 12px 0", fontSize: "1rem", color: "#065f46" }}>⛽ CONSUMO DE COMBUSTIBLE</h4>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ background: "white", padding: 16, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 4 }}>Consumo Actual (Sesión)</div>
+              <div style={{ fontSize: "2rem", fontWeight: 700, color: "#065f46" }}>
+                {(() => {
+                  const saved = localStorage.getItem("consumo_plantas");
+                  const data = saved ? JSON.parse(saved) : {};
+                  const nombre = monitor?.info?.monitor_name;
+                  const consumo = data[nombre] || { sesionActual: 0, historico: 0 };
+                  return consumo.sesionActual.toFixed(2);
+                })()} L
+              </div>
+            </div>
+            <div style={{ background: "white", padding: 16, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: 4 }}>Consumo Histórico Total</div>
+              <div style={{ fontSize: "2rem", fontWeight: 700, color: "#1f2937" }}>
+                {(() => {
+                  const saved = localStorage.getItem("consumo_plantas");
+                  const data = saved ? JSON.parse(saved) : {};
+                  const nombre = monitor?.info?.monitor_name;
+                  const consumo = data[nombre] || { sesionActual: 0, historico: 0 };
+                  return consumo.historico.toFixed(1);
+                })()} L
+              </div>
+            </div>
+          </div>
+        </div>
         }}>
           <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#4b5563' }}>INFORMACIÓN ADICIONAL</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -445,67 +418,11 @@ function DetalleEquipo({ equipo, onClose, consumoData }) {
 // ========== COMPONENTE PRINCIPAL ==========
 export default function EnergiaDashboard({ monitorsAll = [] }) {
   const [equipoSeleccionado, setEquipoSeleccionado] = useState(null);
-  const [consumos, setConsumos] = useState({});
-  const [cargando, setCargando] = useState(false);
+  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
+  const [statsGlobales, setStatsGlobales] = useState({ total: 0, up: 0, down: 0, issues: 0 });
+  const [consumo, setConsumo] = useState({ sesionActual: 0, historico: 0 });
 
-  // Función para cargar consumos desde la API
-  const cargarConsumos = async () => {
-    if (cargando) return;
-    
-    setCargando(true);
-    try {
-      // Obtener todas las plantas de la instancia Energía
-      const plantas = monitorsAll.filter(m => 
-        m.instance === "Energía" || 
-        m.instance === "Energia" ||
-        m.instance?.toLowerCase() === "energía" ||
-        m.instance?.toLowerCase() === "energia"
-      );
-
-      const nuevosConsumos = {};
-      
-      // Cargar consumo de cada planta (máximo 5 por ciclo para no saturar)
-      const batchSize = 5;
-      for (let i = 0; i < plantas.length; i += batchSize) {
-        const batch = plantas.slice(i, i + batchSize);
-        await Promise.all(batch.map(async (planta) => {
-          const nombre = planta.info?.monitor_name;
-          if (nombre?.startsWith('PLANTA')) {
-            try {
-              const res = await fetch(`http://10.10.31.31:8080/api/combustible/consumo/${encodeURIComponent(nombre)}`);
-              if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                  nuevosConsumos[nombre] = data.data;
-                }
-              }
-            } catch (e) {
-              console.error(`Error cargando consumo de ${nombre}:`, e);
-            }
-          }
-        }));
-        // Pequeña pausa entre lotes
-        if (i + batchSize < plantas.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      setConsumos(nuevosConsumos);
-    } catch (error) {
-      console.error('Error cargando consumos:', error);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  // Cargar consumos cada 10 segundos
-  useEffect(() => {
-    cargarConsumos();
-    const interval = setInterval(cargarConsumos, 10000);
-    return () => clearInterval(interval);
-  }, [monitorsAll]);
-
-  // Filtrar SOLO monitores de la instancia "ENERGÍA"
+  // 🎯 FILTRAR SOLO MONITORES DE LA INSTANCIA "ENERGÍA"
   const energiaMonitors = useMemo(() => {
     return monitorsAll.filter(m => 
       m.instance === "Energía" || 
@@ -536,10 +453,17 @@ export default function EnergiaDashboard({ monitorsAll = [] }) {
     });
 
     const metricas = {};
+    let totalUp = 0, totalDown = 0, totalIssues = 0, totalEquipos = 0;
 
     Object.keys(grupos).forEach(tipo => {
       metricas[tipo] = calcularMetricas(grupos[tipo]);
+      totalUp += metricas[tipo].up;
+      totalDown += metricas[tipo].down;
+      totalIssues += metricas[tipo].issues;
+      totalEquipos += metricas[tipo].total;
     });
+
+    setStatsGlobales({ total: totalEquipos, up: totalUp, down: totalDown, issues: totalIssues });
 
     return { equiposPorTipo: grupos, metricasPorTipo: metricas };
   }, [energiaMonitors]);
@@ -563,14 +487,7 @@ export default function EnergiaDashboard({ monitorsAll = [] }) {
 
   return (
     <div style={{ padding: '24px' }}>
-      {/* Indicador de carga */}
-      {cargando && (
-        <div style={{ textAlign: 'center', padding: '8px', color: '#6b7280' }}>
-          Actualizando consumos...
-        </div>
-      )}
-
-      {/* TARJETAS POR TIPO */}
+      {/* TARJETAS POR TIPO - SIN CARDS DE RESUMEN GLOBALES */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {Object.keys(TIPOS_EQUIPO).map(tipo => {
           const monitores = equiposPorTipo[tipo] || [];
@@ -584,7 +501,6 @@ export default function EnergiaDashboard({ monitorsAll = [] }) {
               metricas={metricasPorTipo[tipo]}
               onEquipoClick={handleEquipoClick}
               equipoSeleccionado={equipoSeleccionado}
-              consumosMap={consumos}
             />
           );
         })}
@@ -597,7 +513,6 @@ export default function EnergiaDashboard({ monitorsAll = [] }) {
             metricas={metricasPorTipo.OTRO}
             onEquipoClick={handleEquipoClick}
             equipoSeleccionado={equipoSeleccionado}
-            consumosMap={consumos}
           />
         )}
       </div>
@@ -606,7 +521,6 @@ export default function EnergiaDashboard({ monitorsAll = [] }) {
       <DetalleEquipo
         equipo={equipoSeleccionado}
         onClose={() => setEquipoSeleccionado(null)}
-        consumoData={equipoSeleccionado ? consumos[equipoSeleccionado.info?.monitor_name] : null}
       />
     </div>
   );

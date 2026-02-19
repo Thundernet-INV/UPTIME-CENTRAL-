@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import Dashboard from "./views/Dashboard.jsx";
 import AdminPlantas from "./components/AdminPlantas.jsx";
 import DarkModeCornerButton from "./components/DarkModeCornerButton.jsx";
+import ReportesCombustible from "./components/ReportesCombustible.jsx";
 import "./styles.css";
 import "./dark-mode.css";
 
@@ -15,9 +16,10 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  // Router simple por hash
+  // Router por hash
   const hash = window.location.hash;
-  
+
+  // Ruta para admin-plantas
   if (hash === '#/admin-plantas') {
     return (
       <>
@@ -27,12 +29,25 @@ export default function App() {
     );
   }
 
-  // También permitir acceso sin hash (para pruebas)
-  if (window.location.pathname === '/admin-plantas') {
-    window.location.hash = '#/admin-plantas';
-    return null;
+  // Ruta para reportes de combustible
+  if (hash === '#/reportes') {
+    return (
+      <>
+        <DarkModeCornerButton />
+        <ReportesCombustible />
+      </>
+    );
   }
 
+  // Ruta para energía (si usas #/energia)
+if (hash === '#/energia') {
+  return (
+    <>
+      <DarkModeCornerButton />
+      <Energia monitorsAll={[]} />
+    </>
+  );
+}
   return (
     <>
       <DarkModeCornerButton />
