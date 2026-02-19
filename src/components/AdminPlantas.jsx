@@ -80,17 +80,6 @@ export default function AdminPlantas() {
     }
   };
 
-  const handleResetearPlanta = async (nombre) => {
-    if (window.confirm(`¿Resetear el contador de ${nombre}?`)) {
-      const result = await resetearPlantaAPI(nombre);
-      if (result.success) {
-        mostrarMensaje(`✅ Contador de ${nombre} reseteado`, 'success');
-      } else {
-        mostrarMensaje('❌ ' + result.error, 'error');
-      }
-    }
-  };
-
   const mostrarMensaje = (texto, tipo) => {
     setMensaje({ texto, tipo });
     setTimeout(() => setMensaje({ texto: '', tipo: '' }), 3000);
@@ -260,15 +249,6 @@ export default function AdminPlantas() {
           cursor: pointer;
           font-size: 0.8rem;
         }
-        .btn-reset {
-          padding: 4px 8px;
-          background: #ef4444;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.7rem;
-        }
         .btn-simular {
           padding: 4px 8px;
           border: none;
@@ -357,7 +337,7 @@ export default function AdminPlantas() {
             ⛽ Total: {totalCombustible.toFixed(2)} L
           </span>
           
-          {/* 🟢 NUEVO BOTÓN DE REPORTES */}
+          {/* BOTÓN DE REPORTES */}
           <button
             onClick={() => window.location.hash = '#/reportes'}
             style={{
@@ -494,14 +474,6 @@ export default function AdminPlantas() {
                             title="Simular apagado"
                           >
                             🔴 DOWN
-                          </button>
-                          <button
-                            className="btn-reset"
-                            onClick={() => handleResetearPlanta(planta.nombre_monitor)}
-                            disabled={isUp}
-                            title={isUp ? 'No se puede resetear mientras está encendida' : 'Resetear contador'}
-                          >
-                            Resetear
                           </button>
                         </>
                       )}
