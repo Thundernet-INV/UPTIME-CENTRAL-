@@ -6,7 +6,7 @@ const TIPOS_EQUIPO = {
     nombre: 'PLANTA', 
     color: '#3b82f6', 
     bg: '#dbeafe',
-    icon: '🏭',
+    icon: '',
     desc: 'Plantas eléctricas'
   },
   AVR: { 
@@ -20,14 +20,14 @@ const TIPOS_EQUIPO = {
     nombre: 'CORPOELEC', 
     color: '#8b5cf6', 
     bg: '#ede9fe',
-    icon: '🔌',
+    icon: '',
     desc: 'Conexiones Corpolec'
   },
   INVERSOR: { 
     nombre: 'INVERSOR', 
     color: '#10b981', 
     bg: '#d1fae5',
-    icon: '🔄',
+    icon: '',
     desc: 'Inversores de corriente'
   }
 };
@@ -563,6 +563,44 @@ export default function EnergiaDashboard({ monitorsAll = [] }) {
 
   return (
     <div style={{ padding: '24px' }}>
+      {/* BOTÓN FLOTANTE - ADMIN PLANTAS (VERSIÓN PEQUEÑA) */}
+      <button
+        onClick={() => {
+          window.location.hash = '#/admin-plantas';
+          window.location.reload(); // Forzar recarga para asegurar navegación
+        }}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 99999,
+          width: '50px',
+          height: '50px',
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          cursor: 'pointer',
+          fontSize: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 10px rgba(59, 130, 246, 0.5)',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.background = '#2563eb';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.background = '#3b82f6';
+        }}
+        title="Ir a Administración de Plantas"
+      >
+        🔧
+      </button>
+
       {/* Indicador de carga */}
       {cargando && (
         <div style={{ textAlign: 'center', padding: '8px', color: '#6b7280' }}>

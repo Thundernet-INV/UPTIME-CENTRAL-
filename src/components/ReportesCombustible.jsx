@@ -25,6 +25,7 @@ export default function ReportesCombustible() {
       const data = await res.json();
       if (data.success) {
         setResumenGlobal(data);
+        setDatosPeriodo(null);
       }
     } catch (error) {
       console.error('Error cargando resumen:', error);
@@ -40,12 +41,81 @@ export default function ReportesCombustible() {
       const data = await res.json();
       if (data.success) {
         setDatosPeriodo(data);
+        setResumenGlobal(null);
       }
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para escapar campos CSV
+  const escapeCSV = (campo) => {
+    if (campo === null || campo === undefined) return '';
+    const str = String(campo);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  // Función para exportar a CSV compatible con Excel
+  const exportarACSV = () => {
+    if (!datosPeriodo && !resumenGlobal) return;
+    
+    let csvContent = "";
+    let filename = "";
+    
+    if (plantaSeleccionada !== 'todas' && datosPeriodo) {
+      // Exportar datos de una planta específica
+      filename = `${plantaSeleccionada.replace(/\s+/g, '_')}_${periodo}.csv`;
+      
+      // Cabeceras
+      csvContent = "Período,Eventos,Duración Promedio (min),Consumo Total (L),Máximo (L),Mínimo (L)\n";
+      
+      // Datos
+      datosPeriodo.datos.forEach(row => {
+        csvContent += `${escapeCSV(row.periodo)},${row.eventos},${row.duracion_promedio_minutos},${row.total_consumo},${row.max_consumo || 0},${row.min_consumo || 0}\n`;
+      });
+      
+      // Totales
+      csvContent += `\nTOTALES,,,${datosPeriodo.totales.consumo},,\n`;
+      
+    } else if (resumenGlobal) {
+      // Exportar resumen global
+      filename = `resumen_global_${periodo}.csv`;
+      
+      // Hoja 1: Consumo por sede
+      csvContent = "=== CONSUMO POR SEDE ===\n";
+      csvContent += "Sede,Plantas Activas,Eventos,Consumo Total (L)\n";
+      
+      resumenGlobal.consumo_por_sede.forEach(sede => {
+        csvContent += `${escapeCSV(sede.sede)},${sede.plantas_activas},${sede.total_eventos},${sede.total_consumo}\n`;
+      });
+      
+      // Hoja 2: Top 10 Plantas
+      csvContent += "\n\n=== TOP 10 PLANTAS ===\n";
+      csvContent += "Planta,Sede,Eventos,Consumo Total (L)\n";
+      
+      resumenGlobal.top_plantas.forEach(planta => {
+        csvContent += `${escapeCSV(planta.nombre_monitor)},${escapeCSV(planta.sede)},${planta.eventos},${planta.total_consumo}\n`;
+      });
+      
+      // Resumen
+      csvContent += `\n\nRESUMEN GLOBAL,Total Sedes: ${resumenGlobal.resumen.total_sedes},Total Consumo: ${resumenGlobal.resumen.total_consumo} L,Total Eventos: ${resumenGlobal.resumen.total_eventos}\n`;
+    }
+    
+    // Crear y descargar el archivo
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM para UTF-8 en Excel
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const formatPeriodo = (periodoStr) => {
@@ -115,29 +185,112 @@ export default function ReportesCombustible() {
         .tabla-reporte {
           width: 100%;
           border-collapse: collapse;
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.05);
           margin-top: 20px;
+        }
+        .dark-mode .tabla-reporte {
+          background: #1a1e24;
         }
         .tabla-reporte th {
           text-align: left;
-          padding: 12px;
+          padding: 16px;
           background: #f3f4f6;
           border-bottom: 2px solid #e5e7eb;
+          font-weight: 600;
         }
         .dark-mode .tabla-reporte th {
           background: #2d3238;
           color: #e5e7eb;
+          border-bottom-color: #374151;
         }
         .tabla-reporte td {
-          padding: 12px;
+          padding: 16px;
           border-bottom: 1px solid #e5e7eb;
+        }
+        .dark-mode .tabla-reporte td {
+          border-bottom-color: #374151;
+          color: #e5e7eb;
+        }
+        .tabla-reporte tr:hover {
+          background: #f9fafb;
+        }
+        .dark-mode .tabla-reporte tr:hover {
+          background: #2d3238;
         }
         .badge-periodo {
           background: #dbeafe;
           color: #1e40af;
-          padding: 4px 8px;
+          padding: 4px 12px;
           border-radius: 999px;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
           font-weight: 600;
+          display: inline-block;
+        }
+        .dark-mode .badge-periodo {
+          background: #1e3a5f;
+          color: #93c5fd;
+        }
+        .btn-exportar {
+          padding: 8px 16px;
+          background: #16a34a;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s ease;
+        }
+        .btn-exportar:hover {
+          background: #15803d;
+          transform: scale(1.05);
+        }
+        .btn-exportar:disabled {
+          background: #9ca3af;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .consumo-positivo {
+          color: #16a34a;
+          font-weight: 600;
+        }
+        .dark-mode .consumo-positivo {
+          color: #4ade80;
+        }
+        .barra-porcentaje {
+          width: 100px;
+          height: 8px;
+          background: #e5e7eb;
+          border-radius: 4px;
+          overflow: hidden;
+          display: inline-block;
+          margin-right: 8px;
+        }
+        .dark-mode .barra-porcentaje {
+          background: #374151;
+        }
+        .barra-porcentaje-fill {
+          height: 100%;
+          background: #16a34a;
+          border-radius: 4px;
+        }
+        .dark-mode .barra-porcentaje-fill {
+          background: #4ade80;
+        }
+        .estadistica {
+          background: #f3f4f6;
+          padding: 8px 16px;
+          border-radius: 999px;
+          font-size: 0.9rem;
+        }
+        .dark-mode .estadistica {
+          background: #2d3238;
+          color: #e5e7eb;
         }
       `}</style>
 
@@ -171,7 +324,16 @@ export default function ReportesCombustible() {
             ))}
           </select>
 
-          {loading && <span style={{ color: '#6b7280' }}>Cargando...</span>}
+          <button
+            onClick={exportarACSV}
+            disabled={!datosPeriodo && !resumenGlobal}
+            className="btn-exportar"
+            title="Exportar a Excel/CSV"
+          >
+            📥 Exportar CSV
+          </button>
+
+          {loading && <span className="estadistica">Cargando...</span>}
         </div>
 
         {/* Resumen Global */}
@@ -203,7 +365,7 @@ export default function ReportesCombustible() {
 
             {/* Consumo por sede */}
             <div className="card-stats" style={{ marginBottom: 24 }}>
-              <h3 style={{ marginTop: 0, marginBottom: 16 }}>Consumo por Sede</h3>
+              <h3 style={{ marginTop: 0, marginBottom: 16, color: '#1f2937' }}>Consumo por Sede</h3>
               <table className="tabla-reporte">
                 <thead>
                   <tr>
@@ -222,21 +384,11 @@ export default function ReportesCombustible() {
                         <td><strong>{sede.sede}</strong></td>
                         <td>{sede.plantas_activas}</td>
                         <td>{sede.total_eventos}</td>
-                        <td><span style={{ fontWeight: 600, color: '#16a34a' }}>{sede.total_consumo} L</span></td>
+                        <td><span className="consumo-positivo">{sede.total_consumo} L</span></td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ 
-                              width: 100, 
-                              height: 8, 
-                              background: '#e5e7eb', 
-                              borderRadius: 4,
-                              overflow: 'hidden'
-                            }}>
-                              <div style={{ 
-                                width: `${porcentaje}%`, 
-                                height: '100%', 
-                                background: '#16a34a' 
-                              }} />
+                            <div className="barra-porcentaje">
+                              <div className="barra-porcentaje-fill" style={{ width: `${porcentaje}%` }} />
                             </div>
                             <span>{porcentaje}%</span>
                           </div>
@@ -250,7 +402,7 @@ export default function ReportesCombustible() {
 
             {/* Top 10 Plantas */}
             <div className="card-stats">
-              <h3 style={{ marginTop: 0, marginBottom: 16 }}>🔥 Top 10 Plantas con Mayor Consumo</h3>
+              <h3 style={{ marginTop: 0, marginBottom: 16, color: '#1f2937' }}>🔥 Top 10 Plantas con Mayor Consumo</h3>
               <table className="tabla-reporte">
                 <thead>
                   <tr>
@@ -266,7 +418,7 @@ export default function ReportesCombustible() {
                       <td><strong>{planta.nombre_monitor}</strong></td>
                       <td>{planta.sede}</td>
                       <td>{planta.eventos}</td>
-                      <td><span style={{ fontWeight: 600, color: '#16a34a' }}>{planta.total_consumo} L</span></td>
+                      <td><span className="consumo-positivo">{planta.total_consumo} L</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -298,7 +450,7 @@ export default function ReportesCombustible() {
 
             {/* Tabla de consumo por período */}
             <div className="card-stats">
-              <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+              <h3 style={{ marginTop: 0, marginBottom: 16, color: '#1f2937' }}>
                 Consumo {periodo === 'diario' ? 'Diario' : 
                         periodo === 'semanal' ? 'Semanal' : 
                         periodo === 'mensual' ? 'Mensual' : 'Anual'}
@@ -324,9 +476,9 @@ export default function ReportesCombustible() {
                       </td>
                       <td>{row.eventos}</td>
                       <td>{row.duracion_promedio_minutos} min</td>
-                      <td><span style={{ fontWeight: 600, color: '#16a34a' }}>{row.total_consumo} L</span></td>
-                      <td>{row.max_consumo?.toFixed(2) || 0} L</td>
-                      <td>{row.min_consumo?.toFixed(2) || 0} L</td>
+                      <td><span className="consumo-positivo">{row.total_consumo} L</span></td>
+                      <td>{row.max_consumo || 0} L</td>
+                      <td>{row.min_consumo || 0} L</td>
                     </tr>
                   ))}
                 </tbody>

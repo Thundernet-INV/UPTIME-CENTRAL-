@@ -39,8 +39,7 @@ const keyFor = (i, n = "") => JSON.stringify({ i, n });
 const fromKey = (k) => {
   try { return JSON.parse(k); } catch { return { i: "", n: "" }; }
 };
-
-export default function Dashboard() {
+export default function Dashboard({ monitorsAll = [] }) {
   // ===== Estado base =====
   const [autoPlay, setAutoPlay] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);

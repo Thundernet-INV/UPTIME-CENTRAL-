@@ -1,5 +1,5 @@
 // src/components/DarkModeCornerButton.jsx
-// Botón de modo oscuro en la esquina superior derecha
+// Botón de modo oscuro en la esquina inferior izquierda
 
 import React, { useState, useEffect } from 'react';
 
@@ -32,45 +32,32 @@ export default function DarkModeCornerButton() {
       onClick={toggleTheme}
       style={{
         position: 'fixed',
-        top: '20px',
-        right: '24px',
-        zIndex: 10000,
+        bottom: '20px',
+        left: '20px',
+        zIndex: 99999,
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
-        padding: '10px 20px',
-        borderRadius: '999px',
-        fontSize: '0.95rem',
-        fontWeight: '600',
+        justifyContent: 'center',
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        fontSize: '1.5rem',
         background: isDark ? '#1a1e24' : '#ffffff',
         color: isDark ? '#ffffff' : '#1f2937',
         border: isDark ? '1px solid #3a3f47' : '1px solid #e5e7eb',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+        e.currentTarget.style.transform = 'scale(1.1)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        e.currentTarget.style.transform = 'scale(1)';
       }}
+      title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
     >
-      {isDark ? (
-        <>
-          <span style={{ fontSize: '1.3rem' }}>☀️</span>
-          <span>Modo Claro</span>
-        </>
-      ) : (
-        <>
-          <span style={{ fontSize: '1.3rem' }}>🌙</span>
-          <span>Modo Oscuro</span>
-        </>
-      )}
+      {isDark ? '☀️' : '🌙'}
     </button>
   );
 }

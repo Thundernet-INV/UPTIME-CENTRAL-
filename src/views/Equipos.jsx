@@ -115,7 +115,7 @@ export default function Equipos() {
       </button>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <h2 className="k-card__title" style={{ margin: 0 }}>Equipos por Tipo y Etiquetas</h2>
+        <h2 className="k-card__title" style={{ margin: 0, color: 'red', fontSize: '32px' }}>🔥 ESTO ES UNA PRUEBA - SI VES ESTO, EL ARCHIVO ES EL CORRECTO 🔥</h2>
         <input type="search" placeholder="Buscar por nombre o sede…" value={q}
           onChange={e => setQ(e.target.value)}
           style={{ padding: "8px 12px", border: "1px solid var(--border, #e5e7eb)", borderRadius: 8,
