@@ -1,33 +1,40 @@
-// src/historyEngine.js - CON SOPORTE PARA TIMESTAMPS
+// src/historyEngine.js - VERSIÓN CON DEBUG
 import { historyApi } from './services/historyApi.js';
 
 function convertApiToPoint(data) {
   if (!data || !Array.isArray(data)) return [];
   return data.map(item => ({
-    ts: item.timestamp,
-    ms: item.avgResponseTime || 0,
-    sec: (item.avgResponseTime || 0) / 1000,
-    x: item.timestamp,
-    y: (item.avgResponseTime || 0) / 1000,
+    ts: item.timestamp || item.ts,
+    ms: item.avgResponseTime || item.responseTime || item.ms || 0,
+    sec: (item.avgResponseTime || item.responseTime || item.ms || 0) / 1000,
+    x: item.timestamp || item.ts,
+    y: ((item.avgResponseTime || item.responseTime || item.ms || 0) / 1000),
   }));
 }
 
 const History = {
-  // ✅ VERSIÓN ORIGINAL (para rangos relativos)
   async getAvgSeriesByInstance(instance, hours = 1) {
     if (!instance) return [];
     try {
       const sinceMs = hours * 60 * 60 * 1000;
-      console.log(`📊 Cargando promedio de ${instance} (${hours}h)`);
+      console.log(`📊 [HistoryEngine] Solicitando promedio de ${instance} (${hours}h)`);
+      
+      const startTime = Date.now();
       const apiData = await historyApi.getAvgSeriesByInstance(instance, sinceMs, 60000);
-      return convertApiToPoint(apiData);
+      const elapsed = Date.now() - startTime;
+      
+      console.log(`📊 [HistoryEngine] Respuesta en ${elapsed}ms: ${apiData?.length || 0} puntos`);
+      
+      const converted = convertApiToPoint(apiData);
+      console.log(`📊 [HistoryEngine] Convertidos: ${converted.length} puntos`);
+      
+      return converted;
     } catch (error) {
-      console.error(error);
+      console.error('[HistoryEngine] Error:', error);
       return [];
     }
   },
 
-  // ✅ VERSIÓN CON TIMESTAMPS (para rango absoluto)
   async getAvgSeriesByInstanceRange(instance, from, to) {
     if (!instance) return [];
     try {
@@ -35,7 +42,8 @@ const History = {
       const toMs = typeof to === 'string' ? (to === 'now' ? Date.now() : new Date(to).getTime()) : to;
       const sinceMs = toMs - fromMs;
       
-      console.log(`📊 Cargando promedio de ${instance} (${new Date(fromMs).toLocaleString()} → ${new Date(toMs).toLocaleString()})`);
+      console.log(`📊 [HistoryEngine] Solicitando promedio de ${instance} (${new Date(fromMs).toLocaleString()} → ${new Date(toMs).toLocaleString()})`);
+      
       const apiData = await historyApi.getAvgSeriesByInstance(instance, sinceMs, 60000);
       return convertApiToPoint(apiData);
     } catch (error) {
@@ -49,7 +57,8 @@ const History = {
     try {
       const monitorId = `${instance}_${name}`.replace(/\s+/g, '_');
       const sinceMs = hours * 60 * 60 * 1000;
-      console.log(`📊 Cargando ${name} en ${instance} (${hours}h)`);
+      console.log(`📊 [HistoryEngine] Solicitando ${name} en ${instance} (${hours}h)`);
+      
       const apiData = await historyApi.getSeriesForMonitor(monitorId, sinceMs, 60000);
       return convertApiToPoint(apiData);
     } catch (error) {
@@ -58,7 +67,6 @@ const History = {
     }
   },
 
-  // ✅ VERSIÓN CON TIMESTAMPS PARA MONITORES
   async getSeriesForMonitorRange(instance, name, from, to) {
     if (!instance || !name) return [];
     try {
@@ -67,7 +75,8 @@ const History = {
       const toMs = typeof to === 'string' ? (to === 'now' ? Date.now() : new Date(to).getTime()) : to;
       const sinceMs = toMs - fromMs;
       
-      console.log(`📊 Cargando ${name} en ${instance} (${new Date(fromMs).toLocaleString()} → ${new Date(toMs).toLocaleString()})`);
+      console.log(`📊 [HistoryEngine] Solicitando ${name} en ${instance} (rango absoluto)`);
+      
       const apiData = await historyApi.getSeriesForMonitor(monitorId, sinceMs, 60000);
       return convertApiToPoint(apiData);
     } catch (error) {

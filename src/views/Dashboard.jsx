@@ -1,3 +1,4 @@
+// src/views/Dashboard.jsx (versión corregida)
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import Hero from "../components/Hero.jsx";
@@ -8,10 +9,12 @@ import EnergiaDashboard from "../components/EnergiaDashboard.jsx";
 import SLAAlerts from "../components/SLAAlerts.jsx";
 import InstanceCard from "../components/InstanceCard.jsx";
 import MultiServiceView from "../components/MultiServiceView.jsx";
+import AutoPlayer from "../components/AutoPlayer.jsx"; // ✅ IMPORTAR AUTOPLAYER
 
 import { fetchAll, getBlocklist, saveBlocklist } from "../api.js";
 import History from "../historyEngine.js";
 import { notify } from "../utils/notify.js";
+import { useMonitorNotifications } from "../hooks/useMonitorNotifications.js"; // ✅ NUEVO HOOK
 
 const SLA_CONFIG = { uptimeTarget: 99.9, maxLatencyMs: 800 };
 const ALERT_AUTOCLOSE_MS = 10000;
@@ -39,9 +42,15 @@ const keyFor = (i, n = "") => JSON.stringify({ i, n });
 const fromKey = (k) => {
   try { return JSON.parse(k); } catch { return { i: "", n: "" }; }
 };
+
 export default function Dashboard({ monitorsAll = [] }) {
   // ===== Estado base =====
   const [autoPlay, setAutoPlay] = useState(false);
+  const [autoPlaySec, setAutoPlaySec] = useState(10); // ✅ TIEMPO ENTRE SALTOS
+  const [autoPlayOrder, setAutoPlayOrder] = useState("downFirst"); // ✅ ORDEN
+  const [autoPlayOnlyIncidents, setAutoPlayOnlyIncidents] = useState(false); // ✅ SOLO INCIDENCIAS
+  const [autoPlayLoop, setAutoPlayLoop] = useState(true); // ✅ LOOP
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const [monitors, setMonitors] = useState([]);
@@ -50,6 +59,9 @@ export default function Dashboard({ monitorsAll = [] }) {
   const [hidden, setHidden] = useState(new Set());
   const [route, setRoute] = useState(getRoute());
   const [alerts, setAlerts] = useState([]);
+
+  // ===== HOOK DE NOTIFICACIONES =====
+  useMonitorNotifications(monitors, notificationsEnabled);
 
   // ===== Ruteo por hash =====
   useEffect(() => {
@@ -176,11 +188,25 @@ export default function Dashboard({ monitorsAll = [] }) {
   }
 
   // Navegación a una sede
-  function openInstance(name) { window.location.hash = "/sede/" + encodeURIComponent(name); }
+  function openInstance(name) { 
+    window.location.hash = "/sede/" + encodeURIComponent(name); 
+  }
 
   // ===== Render =====
   return (
     <main>
+      {/* ✅ AUTOPLAYER - MANEJA LA ROTACIÓN AUTOMÁTICA */}
+      <AutoPlayer
+        enabled={autoPlay && route.name !== "energia"} // No auto-play en energía
+        sec={autoPlaySec}
+        order={autoPlayOrder}
+        onlyIncidents={autoPlayOnlyIncidents}
+        loop={autoPlayLoop}
+        filteredAll={filteredAll}
+        route={route}
+        openInstance={openInstance}
+      />
+
       {/* HERO principal con barra de búsqueda */}
       <Hero
         onSearch={(q) =>
@@ -263,6 +289,51 @@ export default function Dashboard({ monitorsAll = [] }) {
                   </select>
                 </label>
 
+                {/* ✅ CONTROLES DE AUTOPLAY MEJORADOS */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, borderLeft: "1px solid #e5e7eb", paddingLeft: 12 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem" }}>
+                    <input
+                      type="checkbox"
+                      checked={autoPlay}
+                      onChange={() => setAutoPlay(prev => !prev)}
+                    />
+                    <span>Auto-play</span>
+                  </label>
+
+                  {autoPlay && (
+                    <>
+                      <input
+                        type="number"
+                        min="3"
+                        max="60"
+                        value={autoPlaySec}
+                        onChange={(e) => setAutoPlaySec(parseInt(e.target.value) || 10)}
+                        style={{ width: 50, padding: "4px", fontSize: "0.8rem" }}
+                        title="Segundos entre sedes"
+                      />
+                      <span style={{ fontSize: "0.7rem", color: "#6b7280" }}>s</span>
+
+                      <select
+                        value={autoPlayOrder}
+                        onChange={(e) => setAutoPlayOrder(e.target.value)}
+                        style={{ fontSize: "0.75rem", padding: "4px" }}
+                      >
+                        <option value="downFirst">↓ DOWN primero</option>
+                        <option value="alpha">A-Z</option>
+                      </select>
+
+                      <label style={{ fontSize: "0.75rem", display: "flex", alignItems: "center", gap: 2 }}>
+                        <input
+                          type="checkbox"
+                          checked={autoPlayOnlyIncidents}
+                          onChange={(e) => setAutoPlayOnlyIncidents(e.target.checked)}
+                        />
+                        <span>Solo incidencias</span>
+                      </label>
+                    </>
+                  )}
+                </div>
+
                 {/* Botón Notificaciones ON/OFF */}
                 <button
                   type="button"
@@ -270,28 +341,8 @@ export default function Dashboard({ monitorsAll = [] }) {
                   onClick={() => setNotificationsEnabled((prev) => !prev)}
                   style={{ fontSize: "0.8rem" }}
                 >
-                  🔔 Notificaciones: {notificationsEnabled ? "ON" : "OFF"}
+                  🔔 {notificationsEnabled ? "ON" : "OFF"}
                 </button>
-
-                {/* Toggle autoplay entre sedes (Home/Instancias) */}
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: "0.85rem",
-                    color: "#475569",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={autoPlay}
-                    onChange={() => setAutoPlay((prev) => !prev)}
-                  />
-                  <span>
-                    {autoPlay ? "Playlist activa" : "Playlist entre sedes"}
-                  </span>
-                </label>
               </div>
             </div>
 
