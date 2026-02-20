@@ -38,8 +38,6 @@ export default function AdminPlantas() {
     consumos, 
     loading, 
     timestamp,
-    simularEvento,
-    resetearPlanta: resetearPlantaAPI,
     recargar
   } = usePlantaData();
 
@@ -70,15 +68,6 @@ export default function AdminPlantas() {
       detectarPlantas();
     }
   }, [plantas]);
-
-  const handleSimularEvento = async (nombreMonitor, estado) => {
-    const result = await simularEvento(nombreMonitor, estado);
-    if (result.success) {
-      mostrarMensaje(`✅ ${nombreMonitor} ${estado === 'UP' ? 'ENCENDIDA' : 'APAGADA'}`, 'success');
-    } else {
-      mostrarMensaje('❌ ' + result.error, 'error');
-    }
-  };
 
   const mostrarMensaje = (texto, tipo) => {
     setMensaje({ texto, tipo });
@@ -248,14 +237,6 @@ export default function AdminPlantas() {
           border-radius: 6px;
           cursor: pointer;
           font-size: 0.8rem;
-        }
-        .btn-simular {
-          padding: 4px 8px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.7rem;
-          font-weight: 600;
         }
         .consumo-actual {
           font-size: 1rem;
@@ -449,34 +430,6 @@ export default function AdminPlantas() {
                       >
                         Detalle
                       </button>
-                      {isConfigurada && (
-                        <>
-                          <button
-                            className="btn-simular"
-                            onClick={() => handleSimularEvento(planta.nombre_monitor, 'UP')}
-                            style={{ 
-                              background: '#16a34a', 
-                              color: 'white',
-                              padding: '4px 8px'
-                            }}
-                            title="Simular encendido"
-                          >
-                            🔌 UP
-                          </button>
-                          <button
-                            className="btn-simular"
-                            onClick={() => handleSimularEvento(planta.nombre_monitor, 'DOWN')}
-                            style={{ 
-                              background: '#dc2626', 
-                              color: 'white',
-                              padding: '4px 8px'
-                            }}
-                            title="Simular apagado"
-                          >
-                            🔴 DOWN
-                          </button>
-                        </>
-                      )}
                       {!isConfigurada && (
                         <button
                           className="btn-agregar"
