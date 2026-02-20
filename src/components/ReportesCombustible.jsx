@@ -1,27 +1,62 @@
-import React, { useState, useEffect } from 'react';
+// src/components/ReportesCombustible.jsx
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePlantaData } from '../hooks/usePlantaData.js';
 
 export default function ReportesCombustible() {
   const [periodo, setPeriodo] = useState('mensual');
+  const [sedeSeleccionada, setSedeSeleccionada] = useState('todas');
   const [plantaSeleccionada, setPlantaSeleccionada] = useState('todas');
   const [datosPeriodo, setDatosPeriodo] = useState(null);
   const [resumenGlobal, setResumenGlobal] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [plantasFiltradas, setPlantasFiltradas] = useState([]);
   
-  const { plantas } = usePlantaData();
+  const { plantas, getResumenPorSede } = usePlantaData();
 
+  // Obtener sedes que realmente tienen plantas (basado en plantas reales)
+  const sedesConPlantas = useMemo(() => {
+    // Extraer sedes únicas de las plantas que existen
+    const sedesUnicas = [...new Set(plantas.map(p => p.sede))];
+    return sedesUnicas.filter(sede => sede && sede !== 'Sin sede').sort();
+  }, [plantas]);
+
+  // También obtener el resumen por sede para mostrar estadísticas
+  const resumenSedes = useMemo(() => {
+    const resumen = getResumenPorSede();
+    // Filtrar solo las sedes que existen en plantas
+    const filtrado = {};
+    sedesConPlantas.forEach(sede => {
+      if (resumen[sede]) {
+        filtrado[sede] = resumen[sede];
+      }
+    });
+    return filtrado;
+  }, [getResumenPorSede, sedesConPlantas]);
+
+  // Actualizar lista de plantas cuando cambia la sede
+  useEffect(() => {
+    if (sedeSeleccionada === 'todas') {
+      setPlantasFiltradas(plantas);
+    } else {
+      setPlantasFiltradas(plantas.filter(p => p.sede === sedeSeleccionada));
+    }
+    setPlantaSeleccionada('todas');
+  }, [sedeSeleccionada, plantas]);
+
+  // Cargar datos según selección
   useEffect(() => {
     if (plantaSeleccionada === 'todas') {
       cargarResumenGlobal();
     } else {
       cargarDatosPlanta();
     }
-  }, [periodo, plantaSeleccionada]);
+  }, [periodo, sedeSeleccionada, plantaSeleccionada]);
 
   const cargarResumenGlobal = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://10.10.31.31:8080/api/combustible/resumen-global?periodo=${periodo}`);
+      const url = `http://10.10.31.31:8080/api/combustible/resumen-global?periodo=${periodo}${sedeSeleccionada !== 'todas' ? `&sede=${encodeURIComponent(sedeSeleccionada)}` : ''}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setResumenGlobal(data);
@@ -60,7 +95,7 @@ export default function ReportesCombustible() {
     return str;
   };
 
-  // Función para exportar a CSV compatible con Excel
+  // Función para exportar a CSV
   const exportarACSV = () => {
     if (!datosPeriodo && !resumenGlobal) return;
     
@@ -68,25 +103,18 @@ export default function ReportesCombustible() {
     let filename = "";
     
     if (plantaSeleccionada !== 'todas' && datosPeriodo) {
-      // Exportar datos de una planta específica
       filename = `${plantaSeleccionada.replace(/\s+/g, '_')}_${periodo}.csv`;
-      
-      // Cabeceras
       csvContent = "Período,Eventos,Duración Promedio (min),Consumo Total (L),Máximo (L),Mínimo (L)\n";
       
-      // Datos
       datosPeriodo.datos.forEach(row => {
         csvContent += `${escapeCSV(row.periodo)},${row.eventos},${row.duracion_promedio_minutos},${row.total_consumo},${row.max_consumo || 0},${row.min_consumo || 0}\n`;
       });
       
-      // Totales
       csvContent += `\nTOTALES,,,${datosPeriodo.totales.consumo},,\n`;
       
     } else if (resumenGlobal) {
-      // Exportar resumen global
-      filename = `resumen_global_${periodo}.csv`;
+      filename = `resumen_${sedeSeleccionada !== 'todas' ? sedeSeleccionada + '_' : ''}${periodo}.csv`;
       
-      // Hoja 1: Consumo por sede
       csvContent = "=== CONSUMO POR SEDE ===\n";
       csvContent += "Sede,Plantas Activas,Eventos,Consumo Total (L)\n";
       
@@ -94,7 +122,6 @@ export default function ReportesCombustible() {
         csvContent += `${escapeCSV(sede.sede)},${sede.plantas_activas},${sede.total_eventos},${sede.total_consumo}\n`;
       });
       
-      // Hoja 2: Top 10 Plantas
       csvContent += "\n\n=== TOP 10 PLANTAS ===\n";
       csvContent += "Planta,Sede,Eventos,Consumo Total (L)\n";
       
@@ -102,12 +129,10 @@ export default function ReportesCombustible() {
         csvContent += `${escapeCSV(planta.nombre_monitor)},${escapeCSV(planta.sede)},${planta.eventos},${planta.total_consumo}\n`;
       });
       
-      // Resumen
       csvContent += `\n\nRESUMEN GLOBAL,Total Sedes: ${resumenGlobal.resumen.total_sedes},Total Consumo: ${resumenGlobal.resumen.total_consumo} L,Total Eventos: ${resumenGlobal.resumen.total_eventos}\n`;
     }
     
-    // Crear y descargar el archivo
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM para UTF-8 en Excel
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.href = url;
@@ -129,12 +154,22 @@ export default function ReportesCombustible() {
     return periodoStr;
   };
 
+  const volverAAdmin = () => {
+    window.location.hash = '#/admin-plantas';
+  };
+
   return (
     <div style={{ padding: '24px' }}>
       <style>{`
         .reportes-container {
           max-width: 1200px;
           margin: 0 auto;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
         }
         .filtros {
           background: white;
@@ -157,6 +192,7 @@ export default function ReportesCombustible() {
           background: white;
           font-size: 0.95rem;
           cursor: pointer;
+          min-width: 180px;
         }
         .dark-mode .select-periodo {
           background: #2d3238;
@@ -255,6 +291,22 @@ export default function ReportesCombustible() {
           cursor: not-allowed;
           transform: none;
         }
+        .btn-volver {
+          padding: 8px 16px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s ease;
+        }
+        .btn-volver:hover {
+          background: #2563eb;
+        }
         .consumo-positivo {
           color: #16a34a;
           font-weight: 600;
@@ -292,10 +344,25 @@ export default function ReportesCombustible() {
           background: #2d3238;
           color: #e5e7eb;
         }
+        .empty-state {
+          text-align: center;
+          padding: 60px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .dark-mode .empty-state {
+          background: #1a1e24;
+        }
       `}</style>
 
       <div className="reportes-container">
-        <h1 style={{ marginBottom: 24 }}>📊 Reportes de Consumo</h1>
+        <div className="header">
+          <h1>📊 Reportes de Consumo de Combustible</h1>
+          <button onClick={volverAAdmin} className="btn-volver">
+            ← Volver a Admin
+          </button>
+        </div>
 
         {/* Filtros */}
         <div className="filtros">
@@ -310,16 +377,36 @@ export default function ReportesCombustible() {
             <option value="anual">📊 Anual (todo el histórico)</option>
           </select>
 
+          {/* FILTRO POR SEDE - AHORA USA sedesConPlantas */}
+          <select 
+            className="select-periodo"
+            value={sedeSeleccionada}
+            onChange={(e) => setSedeSeleccionada(e.target.value)}
+            style={{ minWidth: 200 }}
+          >
+            <option value="todas">🌍 Todas las sedes</option>
+            {sedesConPlantas.map(sede => (
+              <option key={sede} value={sede}>
+                🏢 {sede} {resumenSedes[sede] ? `(${resumenSedes[sede].totalPlantas})` : ''}
+              </option>
+            ))}
+          </select>
+
+          {/* FILTRO POR PLANTA */}
           <select 
             className="select-periodo"
             value={plantaSeleccionada}
             onChange={(e) => setPlantaSeleccionada(e.target.value)}
             style={{ minWidth: 250 }}
           >
-            <option value="todas">🌍 Todas las plantas</option>
-            {plantas.map(p => (
+            <option value="todas">
+              {sedeSeleccionada === 'todas' 
+                ? '⚡ Todas las plantas' 
+                : `⚡ Todas las plantas de ${sedeSeleccionada}`}
+            </option>
+            {plantasFiltradas.map(p => (
               <option key={p.nombre_monitor} value={p.nombre_monitor}>
-                ⚡ {p.nombre_monitor} ({p.sede})
+                ⚡ {p.nombre_monitor}
               </option>
             ))}
           </select>
@@ -336,155 +423,224 @@ export default function ReportesCombustible() {
           {loading && <span className="estadistica">Cargando...</span>}
         </div>
 
-        {/* Resumen Global */}
-        {plantaSeleccionada === 'todas' && resumenGlobal && (
-          <>
-            {/* Stats Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
-              <div className="card-stats">
-                <div className="stat-label">Consumo Total</div>
-                <div className="stat-value">{resumenGlobal.resumen.total_consumo.toFixed(2)} L</div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 4 }}>
-                  {resumenGlobal.resumen.total_eventos} eventos
+        {/* Resumen por sede (solo cuando se ven todas las sedes) */}
+        {sedeSeleccionada === 'todas' && Object.keys(resumenSedes).length > 0 && (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: 12,
+            marginBottom: 24
+          }}>
+            {Object.entries(resumenSedes).map(([sede, data]) => (
+              <div 
+                key={sede} 
+                style={{
+                  background: '#f3f4f6',
+                  padding: 16,
+                  borderRadius: 12,
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onClick={() => setSedeSeleccionada(sede)}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#e5e7eb'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>{sede}</div>
+                <div style={{ fontSize: '0.9rem', color: '#4b5563' }}>
+                  {data.totalPlantas} plantas · {data.totalConsumo.toFixed(2)}L
                 </div>
               </div>
-              <div className="card-stats">
-                <div className="stat-label">Sedes con consumo</div>
-                <div className="stat-value">{resumenGlobal.resumen.total_sedes}</div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 4 }}>
-                  en el período seleccionado
-                </div>
-              </div>
-              <div className="card-stats">
-                <div className="stat-label">Promedio por sede</div>
-                <div className="stat-value">
-                  {(resumenGlobal.resumen.total_consumo / resumenGlobal.resumen.total_sedes || 0).toFixed(2)} L
-                </div>
-              </div>
-            </div>
-
-            {/* Consumo por sede */}
-            <div className="card-stats" style={{ marginBottom: 24 }}>
-              <h3 style={{ marginTop: 0, marginBottom: 16, color: '#1f2937' }}>Consumo por Sede</h3>
-              <table className="tabla-reporte">
-                <thead>
-                  <tr>
-                    <th>Sede</th>
-                    <th>Plantas Activas</th>
-                    <th>Eventos</th>
-                    <th>Total Consumo</th>
-                    <th>% del Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resumenGlobal.consumo_por_sede.map(sede => {
-                    const porcentaje = ((sede.total_consumo / resumenGlobal.resumen.total_consumo) * 100).toFixed(1);
-                    return (
-                      <tr key={sede.sede}>
-                        <td><strong>{sede.sede}</strong></td>
-                        <td>{sede.plantas_activas}</td>
-                        <td>{sede.total_eventos}</td>
-                        <td><span className="consumo-positivo">{sede.total_consumo} L</span></td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div className="barra-porcentaje">
-                              <div className="barra-porcentaje-fill" style={{ width: `${porcentaje}%` }} />
-                            </div>
-                            <span>{porcentaje}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Top 10 Plantas */}
-            <div className="card-stats">
-              <h3 style={{ marginTop: 0, marginBottom: 16, color: '#1f2937' }}>🔥 Top 10 Plantas con Mayor Consumo</h3>
-              <table className="tabla-reporte">
-                <thead>
-                  <tr>
-                    <th>Planta</th>
-                    <th>Sede</th>
-                    <th>Eventos</th>
-                    <th>Total Consumo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resumenGlobal.top_plantas.map(planta => (
-                    <tr key={planta.nombre_monitor}>
-                      <td><strong>{planta.nombre_monitor}</strong></td>
-                      <td>{planta.sede}</td>
-                      <td>{planta.eventos}</td>
-                      <td><span className="consumo-positivo">{planta.total_consumo} L</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+            ))}
+          </div>
         )}
 
-        {/* Datos de una planta específica */}
-        {plantaSeleccionada !== 'todas' && datosPeriodo && (
-          <>
-            {/* Stats de la planta */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
-              <div className="card-stats">
-                <div className="stat-label">Consumo Total</div>
-                <div className="stat-value">{datosPeriodo.totales.consumo} L</div>
-              </div>
-              <div className="card-stats">
-                <div className="stat-label">Eventos</div>
-                <div className="stat-value">{datosPeriodo.totales.eventos}</div>
-              </div>
-              <div className="card-stats">
-                <div className="stat-label">Promedio por evento</div>
-                <div className="stat-value">
-                  {(datosPeriodo.totales.consumo / datosPeriodo.totales.eventos || 0).toFixed(2)} L
+        {/* Contenido según selección */}
+        {plantaSeleccionada === 'todas' ? (
+          // VISTA GLOBAL O POR SEDE
+          resumenGlobal ? (
+            <>
+              {/* Stats Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
+                <div className="card-stats">
+                  <div className="stat-label">Consumo Total</div>
+                  <div className="stat-value">{resumenGlobal.resumen.total_consumo.toFixed(2)} L</div>
+                  <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 4 }}>
+                    {resumenGlobal.resumen.total_eventos} eventos
+                  </div>
+                </div>
+                <div className="card-stats">
+                  <div className="stat-label">
+                    {sedeSeleccionada === 'todas' ? 'Sedes con consumo' : 'Plantas activas'}
+                  </div>
+                  <div className="stat-value">
+                    {sedeSeleccionada === 'todas' 
+                      ? resumenGlobal.resumen.total_sedes 
+                      : plantasFiltradas.length}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 4 }}>
+                    en el período seleccionado
+                  </div>
+                </div>
+                <div className="card-stats">
+                  <div className="stat-label">Promedio por {sedeSeleccionada === 'todas' ? 'sede' : 'planta'}</div>
+                  <div className="stat-value">
+                    {(sedeSeleccionada === 'todas'
+                      ? (resumenGlobal.resumen.total_consumo / resumenGlobal.resumen.total_sedes || 0)
+                      : (resumenGlobal.resumen.total_consumo / plantasFiltradas.length || 0)
+                    ).toFixed(2)} L
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Tabla de consumo por período */}
-            <div className="card-stats">
-              <h3 style={{ marginTop: 0, marginBottom: 16, color: '#1f2937' }}>
-                Consumo {periodo === 'diario' ? 'Diario' : 
-                        periodo === 'semanal' ? 'Semanal' : 
-                        periodo === 'mensual' ? 'Mensual' : 'Anual'}
-              </h3>
-              <table className="tabla-reporte">
-                <thead>
-                  <tr>
-                    <th>Período</th>
-                    <th>Eventos</th>
-                    <th>Duración Promedio</th>
-                    <th>Consumo Total</th>
-                    <th>Máximo</th>
-                    <th>Mínimo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datosPeriodo.datos.map(row => (
-                    <tr key={row.periodo}>
-                      <td>
-                        <span className="badge-periodo">
-                          {formatPeriodo(row.periodo)}
-                        </span>
-                      </td>
-                      <td>{row.eventos}</td>
-                      <td>{row.duracion_promedio_minutos} min</td>
-                      <td><span className="consumo-positivo">{row.total_consumo} L</span></td>
-                      <td>{row.max_consumo || 0} L</td>
-                      <td>{row.min_consumo || 0} L</td>
+              {/* Consumo por sede (solo cuando se ven todas las sedes) */}
+              {sedeSeleccionada === 'todas' && (
+                <div className="card-stats" style={{ marginBottom: 24 }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 16 }}>Consumo por Sede</h3>
+                  <table className="tabla-reporte">
+                    <thead>
+                      <tr>
+                        <th>Sede</th>
+                        <th>Plantas Activas</th>
+                        <th>Eventos</th>
+                        <th>Total Consumo</th>
+                        <th>% del Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resumenGlobal.consumo_por_sede
+                        .filter(sede => sedesConPlantas.includes(sede.sede)) // Filtrar solo sedes que existen
+                        .map(sede => {
+                          const porcentaje = ((sede.total_consumo / resumenGlobal.resumen.total_consumo) * 100).toFixed(1);
+                          return (
+                            <tr key={sede.sede}>
+                              <td><strong>{sede.sede}</strong></td>
+                              <td>{sede.plantas_activas}</td>
+                              <td>{sede.total_eventos}</td>
+                              <td><span className="consumo-positivo">{sede.total_consumo} L</span></td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <div className="barra-porcentaje">
+                                    <div className="barra-porcentaje-fill" style={{ width: `${porcentaje}%` }} />
+                                  </div>
+                                  <span>{porcentaje}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Top 10 Plantas */}
+              <div className="card-stats">
+                <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+                  🔥 Top 10 Plantas con Mayor Consumo
+                  {sedeSeleccionada !== 'todas' && ` en ${sedeSeleccionada}`}
+                </h3>
+                <table className="tabla-reporte">
+                  <thead>
+                    <tr>
+                      <th>Planta</th>
+                      <th>Sede</th>
+                      <th>Eventos</th>
+                      <th>Total Consumo</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {resumenGlobal.top_plantas
+                      .filter(planta => sedeSeleccionada === 'todas' || planta.sede === sedeSeleccionada)
+                      .map(planta => (
+                        <tr key={planta.nombre_monitor}>
+                          <td><strong>{planta.nombre_monitor}</strong></td>
+                          <td>{planta.sede}</td>
+                          <td>{planta.eventos}</td>
+                          <td><span className="consumo-positivo">{planta.total_consumo} L</span></td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📊</div>
+              <h3>No hay datos disponibles</h3>
+              <p style={{ color: '#6b7280' }}>
+                No se encontraron registros de consumo para el período seleccionado.
+              </p>
             </div>
-          </>
+          )
+        ) : (
+          // VISTA DE UNA PLANTA ESPECÍFICA
+          datosPeriodo ? (
+            <>
+              {/* Stats de la planta */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 24 }}>
+                <div className="card-stats">
+                  <div className="stat-label">Consumo Total</div>
+                  <div className="stat-value">{datosPeriodo.totales.consumo} L</div>
+                </div>
+                <div className="card-stats">
+                  <div className="stat-label">Eventos</div>
+                  <div className="stat-value">{datosPeriodo.totales.eventos}</div>
+                </div>
+                <div className="card-stats">
+                  <div className="stat-label">Promedio por evento</div>
+                  <div className="stat-value">
+                    {(datosPeriodo.totales.consumo / datosPeriodo.totales.eventos || 0).toFixed(2)} L
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla de consumo por período */}
+              <div className="card-stats">
+                <h3 style={{ marginTop: 0, marginBottom: 16 }}>
+                  Consumo {periodo === 'diario' ? 'Diario' : 
+                          periodo === 'semanal' ? 'Semanal' : 
+                          periodo === 'mensual' ? 'Mensual' : 'Anual'}
+                </h3>
+                <table className="tabla-reporte">
+                  <thead>
+                    <tr>
+                      <th>Período</th>
+                      <th>Eventos</th>
+                      <th>Duración Promedio</th>
+                      <th>Consumo Total</th>
+                      <th>Máximo</th>
+                      <th>Mínimo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datosPeriodo.datos.map(row => (
+                      <tr key={row.periodo}>
+                        <td>
+                          <span className="badge-periodo">
+                            {formatPeriodo(row.periodo)}
+                          </span>
+                        </td>
+                        <td>{row.eventos}</td>
+                        <td>{row.duracion_promedio_minutos} min</td>
+                        <td><span className="consumo-positivo">{row.total_consumo} L</span></td>
+                        <td>{row.max_consumo || 0} L</td>
+                        <td>{row.min_consumo || 0} L</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📊</div>
+              <h3>No hay datos disponibles</h3>
+              <p style={{ color: '#6b7280' }}>
+                No se encontraron registros de consumo para esta planta en el período seleccionado.
+              </p>
+            </div>
+          )
         )}
       </div>
     </div>

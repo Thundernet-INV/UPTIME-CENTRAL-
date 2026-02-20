@@ -1,6 +1,79 @@
-import React, { useState, useEffect } from 'react';
-import PlantaDetail from "./PlantaDetail.jsx";
+// src/components/AdminPlantas.jsx - VERSIÓN OPTIMIZADA
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import { usePlantaData } from '../hooks/usePlantaData.js';
+
+// Componente de fila memoizado para evitar re-renders
+const FilaPlanta = memo(({ planta, estado, consumo, onAbrirModal }) => {
+  const isUp = estado?.text?.includes('🟢');
+  
+  return (
+    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+      <td style={{ padding: '12px' }}><strong>{planta.nombre_monitor}</strong></td>
+      <td style={{ padding: '12px' }}>{planta.sede}</td>
+      <td style={{ padding: '12px' }}>{planta.modelo}</td>
+      <td style={{ padding: '12px' }}>{planta.consumo_lh}</td>
+      <td style={{ padding: '12px' }}>
+        <span style={{ 
+          background: estado?.bg || '#e5e7eb', 
+          color: estado?.color || '#6b7280', 
+          padding: '4px 12px', 
+          borderRadius: 20,
+          fontSize: '0.85rem'
+        }}>
+          {estado?.text || 'DESCONOCIDO'}
+        </span>
+      </td>
+      <td style={{ 
+        padding: '12px', 
+        fontWeight: 600, 
+        color: isUp ? '#16a34a' : '#6b7280' 
+      }}>
+        {consumo?.sesionActual?.toFixed(3) || '0'}L
+      </td>
+      <td style={{ padding: '12px', fontWeight: 600 }}>
+        {consumo?.historico?.toFixed(2) || '0'}L
+      </td>
+      <td style={{ padding: '12px' }}>
+        <button
+          onClick={() => onAbrirModal(planta)}
+          style={{ 
+            padding: '6px 12px', 
+            background: '#3b82f6', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: 20, 
+            cursor: 'pointer',
+            fontSize: '0.85rem'
+          }}
+        >
+          Detalle
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+// Componente de tarjeta de sede memoizado
+const TarjetaSede = memo(({ sede, data, onClick }) => (
+  <div 
+    style={{
+      background: '#f3f4f6',
+      padding: '12px',
+      borderRadius: 12,
+      border: '1px solid #e5e7eb',
+      cursor: 'pointer',
+      transition: 'all 0.2s'
+    }}
+    onClick={onClick}
+    onMouseEnter={(e) => e.currentTarget.style.background = '#e5e7eb'}
+    onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}
+  >
+    <div style={{ fontWeight: 700, marginBottom: 4 }}>{sede}</div>
+    <div style={{ fontSize: '0.85rem', color: '#4b5563' }}>
+      {data.total} plantas · {data.consumo}L
+    </div>
+  </div>
+));
 
 const MODELOS_CON_CONSUMO = {
   '46-GI-30MDI': 6.5,
@@ -23,436 +96,352 @@ const MODELOS_CON_CONSUMO = {
   '46-GI-240-Z': 50.0
 };
 
-const MODELO_DEFAULT = '46-GI-30FW';
-const CONSUMO_DEFAULT = 7.0;
-
 export default function AdminPlantas() {
-  const [plantasDetectadas, setPlantasDetectadas] = useState([]);
-  const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
   const [plantaSeleccionada, setPlantaSeleccionada] = useState(null);
+  const [editando, setEditando] = useState(false);
+  const [datosEditados, setDatosEditados] = useState(null);
+  const [filtroSede, setFiltroSede] = useState('todas');
+  const [busqueda, setBusqueda] = useState('');
+  const [mensaje, setMensaje] = useState(null);
   
-  // Usar el hook unificado
   const { 
     plantas, 
     estados, 
     consumos, 
-    loading, 
-    timestamp,
+    sedes,
+    actualizarPlanta,
     recargar
   } = usePlantaData();
 
-  // Detectar plantas no configuradas
-  useEffect(() => {
-    const detectarPlantas = async () => {
-      try {
-        const res = await fetch('http://10.10.31.31:8080/api/summary');
-        const data = await res.json();
-        
-        const monitoresEnergia = data.monitors.filter(m => 
-          m.instance === 'Energia' && 
-          m.info.monitor_name.startsWith('PLANTA')
-        );
-        
-        const configMap = new Map(plantas.map(p => [p.nombre_monitor, true]));
-        const detectadas = monitoresEnergia
-          .filter(m => !configMap.has(m.info.monitor_name))
-          .map(m => ({ nombre_monitor: m.info.monitor_name }));
-        
-        setPlantasDetectadas(detectadas);
-      } catch (error) {
-        console.error('Error detectando plantas:', error);
-      }
-    };
-
-    if (plantas.length > 0) {
-      detectarPlantas();
-    }
-  }, [plantas]);
-
-  const mostrarMensaje = (texto, tipo) => {
-    setMensaje({ texto, tipo });
-    setTimeout(() => setMensaje({ texto: '', tipo: '' }), 3000);
-  };
-
-  const handleAgregarPlanta = async (nombre_monitor) => {
-    try {
-      let sede = nombre_monitor
-        .replace('PLANTA ELECTRICA ', '')
-        .replace('PLANTA ', '')
-        .trim();
-      
-      sede = sede.charAt(0).toUpperCase() + sede.slice(1).toLowerCase();
-      
-      const nuevaPlantaData = {
-        nombre_monitor,
-        sede,
-        modelo: MODELO_DEFAULT,
-        consumo_lh: CONSUMO_DEFAULT
-      };
-      
-      const res = await fetch('http://10.10.31.31:8080/api/combustible/plantas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaPlantaData)
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        mostrarMensaje(`✅ Planta "${nombre_monitor}" agregada`, 'success');
-        recargar(); // Recargar datos después de agregar
-      } else {
-        mostrarMensaje('❌ ' + data.error, 'error');
-      }
-    } catch (error) {
-      mostrarMensaje('❌ Error al conectar con el servidor', 'error');
-    }
-  };
-
-  const getEstadoPlanta = (nombreMonitor) => {
-    const estado = estados[nombreMonitor];
-    if (!estado) return { estado: 'DESCONOCIDO', color: '#6b7280', bg: '#e5e7eb' };
+  // Filtrar plantas (memoizado)
+  const plantasFiltradas = useMemo(() => {
+    let lista = [...plantas];
     
-    if (estado.status === 'UP') {
-      return { 
-        estado: '🟢 ENCENDIDA', 
-        color: '#16a34a', 
-        bg: '#d1fae5',
-        responseTime: estado.responseTime,
-        lastCheck: estado.lastCheck
-      };
-    } else {
-      return { 
-        estado: '🔴 APAGADA', 
-        color: '#dc2626', 
-        bg: '#fee2e2',
-        responseTime: estado.responseTime,
-        lastCheck: estado.lastCheck
-      };
+    if (filtroSede !== 'todas') {
+      lista = lista.filter(p => p.sede === filtroSede);
     }
-  };
+    
+    if (busqueda) {
+      const q = busqueda.toLowerCase();
+      lista = lista.filter(p => 
+        p.nombre_monitor.toLowerCase().includes(q)
+      );
+    }
+    
+    return lista.sort((a, b) => a.nombre_monitor.localeCompare(b.nombre_monitor));
+  }, [plantas, filtroSede, busqueda]);
 
-  const plantasCombinadas = () => {
-    const configMap = new Map(plantas.map(p => [p.nombre_monitor, p]));
-    const result = [];
-    
-    plantas.forEach(p => result.push({ ...p, configurada: true }));
-    
-    plantasDetectadas.forEach(d => {
-      if (!configMap.has(d.nombre_monitor)) {
-        result.push({
-          nombre_monitor: d.nombre_monitor,
-          sede: '—',
-          modelo: '—',
-          consumo_lh: 0,
-          configurada: false,
-          detectada: true
-        });
+  // Resumen por sede (memoizado)
+  const resumenPorSede = useMemo(() => {
+    const resumen = {};
+    plantas.forEach(p => {
+      const sede = p.sede;
+      if (!resumen[sede]) {
+        resumen[sede] = { total: 0, consumo: 0 };
       }
+      resumen[sede].total++;
+      resumen[sede].consumo += consumos[p.nombre_monitor]?.historico || 0;
     });
+    Object.keys(resumen).forEach(s => {
+      resumen[s].consumo = resumen[s].consumo.toFixed(2);
+    });
+    return resumen;
+  }, [plantas, consumos]);
+
+  const totalEncendidas = useMemo(() => 
+    Object.values(estados).filter(e => e?.status === 'UP').length, [estados]
+  );
+
+  const totalCombustible = useMemo(() => 
+    plantasFiltradas.reduce((sum, p) => sum + (consumos[p.nombre_monitor]?.historico || 0), 0).toFixed(2), 
+    [plantasFiltradas, consumos]
+  );
+
+  const getEstadoPlanta = useCallback((nombreMonitor) => {
+    const estado = estados[nombreMonitor];
+    if (!estado) return { text: 'DESCONOCIDO', color: '#6b7280', bg: '#e5e7eb' };
+    return estado.status === 'UP' 
+      ? { text: '🟢 ENCENDIDA', color: '#16a34a', bg: '#d1fae5' }
+      : { text: '🔴 APAGADA', color: '#dc2626', bg: '#fee2e2' };
+  }, [estados]);
+
+  const handleAbrirModal = useCallback((planta) => {
+    setPlantaSeleccionada(planta);
+    setDatosEditados({ ...planta });
+    setEditando(false);
+  }, []);
+
+  const handleCerrarModal = useCallback(() => {
+    setPlantaSeleccionada(null);
+    setEditando(false);
+  }, []);
+
+  const handleGuardarCambios = async () => {
+    if (!datosEditados) return;
     
-    return result.sort((a, b) => a.nombre_monitor.localeCompare(b.nombre_monitor));
+    const result = await actualizarPlanta(plantaSeleccionada.nombre_monitor, datosEditados);
+    if (result.success) {
+      setMensaje({ texto: '✅ Guardado', tipo: 'success' });
+      handleCerrarModal();
+      setTimeout(() => setMensaje(null), 2000);
+    } else {
+      setMensaje({ texto: '❌ Error', tipo: 'error' });
+      setTimeout(() => setMensaje(null), 2000);
+    }
   };
-
-  const plantasUp = Object.values(estados).filter(e => e.status === 'UP').length;
-  const listaCombinada = plantasCombinadas();
-  
-  // Calcular total de combustible
-  const totalCombustible = Object.values(consumos).reduce((sum, p) => sum + (p.historico || 0), 0);
-
-  if (loading) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <div className="spinner" style={{
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #3b82f6',
-          borderRadius: '50%',
-          width: 40,
-          height: 40,
-          margin: '0 auto 20px',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <p>Detectando plantas...</p>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   return (
-    <div style={{ padding: '24px' }}>
-      <style>{`
-        .admin-plantas table {
-          width: 100%;
-          border-collapse: collapse;
-          background: white;
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .dark-mode .admin-plantas table {
-          background: #1a1e24;
-        }
-        .admin-plantas th {
-          text-align: left;
-          padding: 16px;
-          background: #f3f4f6;
-          border-bottom: 2px solid #e5e7eb;
-          font-weight: 600;
-        }
-        .dark-mode .admin-plantas th {
-          background: #2d3238;
-          color: #e5e7eb;
-          border-bottom-color: #374151;
-        }
-        .admin-plantas td {
-          padding: 16px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .dark-mode .admin-plantas td {
-          border-bottom-color: #374151;
-          color: #e5e7eb;
-        }
-        .admin-plantas tr:hover {
-          background: #f9fafb;
-        }
-        .dark-mode .admin-plantas tr:hover {
-          background: #2d3238;
-        }
-        .badge {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 999px;
-          font-size: 0.8rem;
-          font-weight: 600;
-        }
-        .btn-agregar {
-          padding: 4px 12px;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.8rem;
-        }
-        .consumo-actual {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #16a34a;
-        }
-        .mensaje {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          padding: 12px 24px;
-          border-radius: 8px;
-          z-index: 1000;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          animation: slideIn 0.3s ease;
-        }
-        .mensaje.success {
-          background: #d1fae5;
-          color: #065f46;
-          border: 1px solid #a7f3d0;
-        }
-        .mensaje.error {
-          background: #fee2e2;
-          color: #991b1b;
-          border: 1px solid #fecaca;
-        }
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        .estadistica {
-          background: #f3f4f6;
-          padding: 8px 16px;
-          border-radius: 999px;
-          font-size: 0.9rem;
-        }
-        .dark-mode .estadistica {
-          background: #2d3238;
-          color: #e5e7eb;
-        }
-        .total-consumo {
-          background: #16a34a;
-          color: white;
-          padding: 8px 20px;
-          border-radius: 999px;
-          font-weight: 600;
-        }
-      `}</style>
-
-      {mensaje.texto && (
-        <div className={`mensaje ${mensaje.tipo}`}>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Mensaje flotante */}
+      {mensaje && (
+        <div style={{
+          position: 'fixed',
+          top: 20,
+          right: 20,
+          padding: '10px 20px',
+          background: mensaje.tipo === 'success' ? '#d1fae5' : '#fee2e2',
+          color: mensaje.tipo === 'success' ? '#065f46' : '#991b1b',
+          borderRadius: 8,
+          zIndex: 10000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
           {mensaje.texto}
         </div>
       )}
 
+      {/* Header */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        marginBottom: 24,
-        flexWrap: 'wrap',
-        gap: 16
+        marginBottom: 20
       }}>
-        <h1 style={{ margin: 0 }}>⚡ Administración de Plantas Eléctricas</h1>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span className="estadistica">
-            📊 Configuradas: {plantas.length}
+        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>⚡ Plantas Eléctricas</h1>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <span style={{ background: '#f3f4f6', padding: '6px 12px', borderRadius: 20, fontSize: '0.9rem' }}>
+            📊 {plantas.length}
           </span>
-          <span className="estadistica">
-            🔍 Detectadas: {plantasDetectadas.length}
+          <span style={{ background: '#d1fae5', padding: '6px 12px', borderRadius: 20, color: '#065f46', fontSize: '0.9rem' }}>
+            🟢 {totalEncendidas}
           </span>
-          <span className="estadistica" style={{ 
-            background: '#d1fae5', 
-            color: '#065f46' 
-          }}>
-            🟢 Encendidas: {plantasUp}
+          <span style={{ background: '#16a34a', padding: '6px 12px', borderRadius: 20, color: 'white', fontSize: '0.9rem' }}>
+            ⛽ {totalCombustible}L
           </span>
-          <span className="total-consumo">
-            ⛽ Total: {totalCombustible.toFixed(2)} L
-          </span>
-          
-          {/* BOTÓN DE REPORTES */}
-          <button
+          <button 
             onClick={() => window.location.hash = '#/reportes'}
-            style={{
-              padding: '8px 16px',
-              background: '#16a34a',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            📈 Ver Reportes
-          </button>
-          
-          <button
-            onClick={recargar}
-            style={{
-              padding: '8px 16px',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
+            style={{ 
+              padding: '6px 12px', 
+              background: '#16a34a', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: 20, 
               cursor: 'pointer',
               fontSize: '0.9rem'
             }}
           >
-            🔄 Actualizar
+            📈 Reportes
+          </button>
+          <button 
+            onClick={recargar}
+            style={{ 
+              padding: '6px 12px', 
+              background: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: 20, 
+              cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}
+          >
+            🔄
           </button>
         </div>
       </div>
 
-      <div className="admin-plantas">
-        <table>
-          <thead>
+      {/* Filtros */}
+      <div style={{ 
+        display: 'flex', 
+        gap: 12, 
+        marginBottom: 20, 
+        padding: '12px', 
+        background: '#f9fafb', 
+        borderRadius: 12
+      }}>
+        <select 
+          value={filtroSede}
+          onChange={(e) => setFiltroSede(e.target.value)}
+          style={{ 
+            padding: '6px 12px', 
+            borderRadius: 20, 
+            border: '1px solid #e5e7eb',
+            minWidth: '150px',
+            fontSize: '0.9rem'
+          }}
+        >
+          <option value="todas">🌍 Todas</option>
+          {sedes.map(s => (
+            <option key={s} value={s}>🏢 {s}</option>
+          ))}
+        </select>
+        
+        <input
+          type="text"
+          placeholder="Buscar..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{ 
+            flex: 1, 
+            padding: '6px 12px', 
+            borderRadius: 20, 
+            border: '1px solid #e5e7eb',
+            fontSize: '0.9rem'
+          }}
+        />
+      </div>
+
+      {/* Resumen por sede */}
+      {filtroSede === 'todas' && (
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+          gap: 8,
+          marginBottom: 20
+        }}>
+          {Object.entries(resumenPorSede).map(([sede, data]) => (
+            <TarjetaSede 
+              key={sede} 
+              sede={sede} 
+              data={data} 
+              onClick={() => setFiltroSede(sede)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Tabla */}
+      <div style={{ 
+        overflowX: 'auto', 
+        background: 'white', 
+        borderRadius: 12, 
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead style={{ background: '#f3f4f6' }}>
             <tr>
-              <th>Monitor</th>
-              <th>Sede</th>
-              <th>Modelo</th>
-              <th>Consumo L/h</th>
-              <th>Estado</th>
-              <th>Consumo Actual</th>
-              <th>Histórico</th>
-              <th>Acciones</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Monitor</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Sede</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Modelo</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>L/h</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Estado</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Actual</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Hist.</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Acción</th>
             </tr>
           </thead>
           <tbody>
-            {listaCombinada.map(planta => {
-              const estadoInfo = getEstadoPlanta(planta.nombre_monitor);
-              const isConfigurada = planta.configurada;
-              const consumoData = consumos[planta.nombre_monitor] || { sesionActual: 0, historico: 0 };
-              const isUp = estadoInfo.estado.includes('🟢');
-              
-              return (
-                <tr key={`${planta.nombre_monitor}-${timestamp}`}>
-                  <td>
-                    <strong>{planta.nombre_monitor}</strong>
-                    {!isConfigurada && (
-                      <span style={{
-                        background: '#fef3c7',
-                        color: '#92400e',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: '0.7rem',
-                        marginLeft: 8
-                      }}>
-                        Nueva
-                      </span>
-                    )}
-                  </td>
-                  <td>{planta.sede}</td>
-                  <td>{planta.modelo}</td>
-                  <td>{planta.consumo_lh} L/h</td>
-                  <td>
-                    <span className="badge" style={{
-                      background: estadoInfo.bg,
-                      color: estadoInfo.color
-                    }}>
-                      {estadoInfo.estado}
-                    </span>
-                  </td>
-                  <td>
-                    {isConfigurada ? (
-                      <span className="consumo-actual" style={{ color: isUp ? "#16a34a" : "#6b7280" }}>
-                        {consumoData.sesionActual.toFixed(3)} L
-                      </span>
-                    ) : (
-                      <span style={{ color: '#6b7280' }}>—</span>
-                    )}
-                  </td>
-                  <td>
-                    {isConfigurada ? (
-                      <span>
-                        {consumoData.historico.toFixed(2)} L
-                      </span>
-                    ) : (
-                      <span style={{ color: '#6b7280' }}>—</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      <button
-                        className="btn-agregar"
-                        onClick={() => setPlantaSeleccionada(planta)}
-                        style={{ background: '#3b82f6' }}
-                      >
-                        Detalle
-                      </button>
-                      {!isConfigurada && (
-                        <button
-                          className="btn-agregar"
-                          onClick={() => handleAgregarPlanta(planta.nombre_monitor)}
-                        >
-                          Agregar
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {plantasFiltradas.map(p => (
+              <FilaPlanta
+                key={p.nombre_monitor}
+                planta={p}
+                estado={getEstadoPlanta(p.nombre_monitor)}
+                consumo={consumos[p.nombre_monitor]}
+                onAbrirModal={handleAbrirModal}
+              />
+            ))}
           </tbody>
         </table>
       </div>
 
+      {/* Modal simplificado */}
       {plantaSeleccionada && (
-        <PlantaDetail
-          planta={plantaSeleccionada}
-          onClose={() => setPlantaSeleccionada(null)}
-          onActualizar={recargar}
-        />
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            width: '90%',
+            maxWidth: 500,
+            padding: 20
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
+              <h3 style={{ margin: 0 }}>
+                {editando ? '✏️ Editar' : plantaSeleccionada.nombre_monitor}
+              </h3>
+              <button onClick={handleCerrarModal} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
+            </div>
+
+            {!editando ? (
+              <>
+                <div style={{ marginBottom: 15 }}>
+                  <p><strong>Sede:</strong> {plantaSeleccionada.sede}</p>
+                  <p><strong>Modelo:</strong> {plantaSeleccionada.modelo}</p>
+                  <p><strong>Consumo:</strong> {plantaSeleccionada.consumo_lh} L/h</p>
+                  <p><strong>Estado:</strong> {getEstadoPlanta(plantaSeleccionada.nombre_monitor).text}</p>
+                </div>
+                <button
+                  onClick={() => setEditando(true)}
+                  style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, width: '100%', cursor: 'pointer' }}
+                >
+                  ✏️ Editar
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: 15 }}>
+                  <input
+                    type="text"
+                    placeholder="Nombre"
+                    value={datosEditados?.nombre_monitor || ''}
+                    onChange={(e) => setDatosEditados({...datosEditados, nombre_monitor: e.target.value})}
+                    style={{ width: '100%', padding: 8, marginBottom: 8, border: '1px solid #e5e7eb', borderRadius: 4 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Sede"
+                    value={datosEditados?.sede || ''}
+                    onChange={(e) => setDatosEditados({...datosEditados, sede: e.target.value})}
+                    style={{ width: '100%', padding: 8, marginBottom: 8, border: '1px solid #e5e7eb', borderRadius: 4 }}
+                  />
+                  <select
+                    value={datosEditados?.modelo || ''}
+                    onChange={(e) => setDatosEditados({...datosEditados, modelo: e.target.value})}
+                    style={{ width: '100%', padding: 8, marginBottom: 8, border: '1px solid #e5e7eb', borderRadius: 4 }}
+                  >
+                    <option value="">Modelo</option>
+                    {Object.keys(MODELOS_CON_CONSUMO).map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="Consumo L/h"
+                    value={datosEditados?.consumo_lh || ''}
+                    onChange={(e) => setDatosEditados({...datosEditados, consumo_lh: parseFloat(e.target.value)})}
+                    style={{ width: '100%', padding: 8, border: '1px solid #e5e7eb', borderRadius: 4 }}
+                  />
+                </div>
+                <button
+                  onClick={handleGuardarCambios}
+                  style={{ padding: '8px 16px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, width: '100%', cursor: 'pointer' }}
+                >
+                  💾 Guardar
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
